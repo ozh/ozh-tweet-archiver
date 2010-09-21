@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Ozh' Tweet Archiver
-Plugin URI: x
+Plugin URI: http://planetozh.com/blog/my-projects/ozh-tweet-archiver-backup-twitter-with-wordpress/
 Description: Archive your tweets and import them as posts. Can convert #hashtags to WordPress tags.
 Version: 1.0
 Author: Ozh
