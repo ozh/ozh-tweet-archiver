@@ -51,7 +51,7 @@ function ozh_ta_get_tweets( $echo = false ) {
 	}
 	
 	// No Fail Whale, let's import
-	$tweets = array_reverse( json_decode( $tweets ) );
+	$tweets = array_reverse( (array)json_decode( $tweets ) );
 	
 	// Tweets found, let's archive
 	if ( $tweets ) {
