@@ -6,7 +6,7 @@ Tested up to: 9.9
 Stable tag: trunk
 Contributors: ozh
 
-Import and archive your tweets (also convert #hashtags into post tags)
+Import and archive your tweets (also convert #hashtags into post tags) 
 
 == Description ==
 
