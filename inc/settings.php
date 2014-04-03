@@ -29,6 +29,14 @@ function ozh_ta_init_settings() {
 		'ozh_ta',                       // plugin page
 		'ozh_ta_section_twitter'        // section name
 	);
+	// Twitter section: access token field
+	add_settings_field(
+		'ozh_ta_setting_access_token',  // setting ID
+		'Enter your Access Token',      // text on the left
+		'ozh_ta_setting_access_token',  // callback function for field
+		'ozh_ta',                       // plugin page
+		'ozh_ta_section_twitter'        // section name
+	);
 	// Plugin section: lots of fields
 	$fields = array(
 		'refresh_interval' => 'Refresh interval',
@@ -186,32 +194,37 @@ function ozh_ta_setting_screen_name() {
 	ozh_ta_setting( 'screen_name' );
 }
 
-// Field: screen_name
+// Field: access_token
+function ozh_ta_setting_access_token() {
+	ozh_ta_setting( 'access_token' );
+}
+
+// Field: refresh_interval
 function ozh_ta_setting_refresh_interval() {
 	ozh_ta_setting( 'refresh_interval' );
 }
 
-// Field: screen_name
+// Field: post_category
 function ozh_ta_setting_post_category() {
 	ozh_ta_setting( 'post_category' );
 }
 
-// Field: screen_name
+// Field: post_author
 function ozh_ta_setting_post_author() {
 	ozh_ta_setting( 'post_author' );
 }
 
-// Field: screen_name
+// Field: link_usernames
 function ozh_ta_setting_link_usernames() {
 	ozh_ta_setting( 'link_usernames' );
 }
 
-// Field: screen_name
+// Field: link_hashtags
 function ozh_ta_setting_link_hashtags() {
 	ozh_ta_setting( 'link_hashtags' );
 }
 
-// Field: screen_name
+// Field: add_hash_as_tags
 function ozh_ta_setting_add_hash_as_tags() {
 	ozh_ta_setting( 'add_hash_as_tags' );
 }
