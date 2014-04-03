@@ -77,6 +77,10 @@ function ozh_ta_setting( $setting ) {
 	// echo the field
 	switch( $setting ) {
 	case 'screen_name':
+	case 'access_token':
+		$value = esc_attr( $value );
+		echo "<input id='$setting' name='ozh_ta[$setting]' type='text' value='$value' />";
+		break;
 		$value = esc_attr( $value );
 		echo "<input id='$setting' name='ozh_ta[$setting]' type='text' value='$value' />";
 		break;
