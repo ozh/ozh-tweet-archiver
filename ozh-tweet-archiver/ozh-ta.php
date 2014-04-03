@@ -3,7 +3,7 @@
 Plugin Name: Ozh' Tweet Archiver
 Plugin URI: http://planetozh.com/blog/my-projects/ozh-tweet-archiver-backup-twitter-with-wordpress/
 Description: Archive your tweets and import them as posts. Can convert #hashtags to WordPress tags.
-Version: 1.0.1
+Version: 1.1
 Author: Ozh
 Author URI: http://ozh.org/
 */
@@ -11,10 +11,11 @@ Author URI: http://ozh.org/
 /* History
    1.0     initial release
    1.0.1   fix notice when no tweet found
+   1.1     change to Twitter API v1.1
 */
 
 // Constants that should work for everyone
-define( 'OZH_TA_API', 'http://api.twitter.com/1/statuses/user_timeline.json' ); // Twitter API url (no auth needed)
+define( 'OZH_TA_API', 'https://api.twitter.com/1.1/statuses/user_timeline.json' ); // Twitter API url (1.1 version)
 define( 'OZH_TA_BATCH', 100 );	// How many tweets to import at most. 200 is the max allowed on Twitter. Take it easy on shared hosting.
 define( 'OZH_TA_DEBUG', false ); // Log debug messages
 define( 'OZH_TA_NEXT_SUCCESS', 10 ); // How long to wait between sucessfull batches
