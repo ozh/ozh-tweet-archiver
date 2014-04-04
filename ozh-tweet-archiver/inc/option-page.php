@@ -100,7 +100,7 @@ function ozh_ta_do_page() {
 		echo "</pre>";
 	}
 	
-	if( $ozh_ta['screen_name'] ) {
+	if( $ozh_ta['screen_name'] && $ozh_ta['access_token']) {
 		ozh_ta_do_page_manual();
 	}
 
