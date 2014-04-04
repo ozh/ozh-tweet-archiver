@@ -11,35 +11,36 @@ function ozh_ta_get_tweets( $echo = false ) {
 		ozh_ta_debug( 'No screen name defined' );
 		return false;
 	}
-
-	$access_token = get_option('ozh_ta_access_token');
-
-	if( !$access_token ) {
+	
+	if( !$ozh_ta['access_token'] ) {
 		ozh_ta_debug( 'No access token defined' );
 		return false;
 	}
-	
-	$headers = array(
-		'Authorization' => 'Bearer ' . $access_token
-	);
-	
+
 	$api = add_query_arg( array(
 		'count' => OZH_TA_BATCH,
 		'page' => $ozh_ta['api_page'],
 		'screen_name' => urlencode( $ozh_ta['screen_name'] ),
-		'headers' => $headers,
 		'since_id' => $ozh_ta['last_tweet_id_inserted']
 	), OZH_TA_API );
 	
 	ozh_ta_debug( "Polling $api" );
+	
+	$headers = array(
+		'Authorization' => 'Bearer ' . $ozh_ta['access_token']
+	);
+
 	ozh_ta_debug( "Headers: " . json_encode( $headers ));
 	
-	$response = wp_remote_get( $api, array( 'timeout' => 10 ) );
+	$response = wp_remote_get( $api, array(
+		'headers' => $headers,
+		'timeout' => 10
+	) );
 	$tweets = wp_remote_retrieve_body( $response );
 	// Fix integers in the JSON response to have them handled as strings and not integers
 	$tweets = preg_replace( '/"\s*:\s*([\d]+)\s*([,}{])/', '": "$1"$2', $tweets );
-	$ratelimit = wp_remote_retrieve_header( $response, 'x-ratelimit-limit' );
-	$ratelimit_r = wp_remote_retrieve_header( $response, 'x-ratelimit-remaining' );
+	$ratelimit = wp_remote_retrieve_header( $response, 'X-Rate-Limit-Limit' );
+	$ratelimit_r = wp_remote_retrieve_header( $response, 'X-Rate-Limit-Remaining' );
 	
 	ozh_ta_debug( "rate: $ratelimit_r" );
 	
