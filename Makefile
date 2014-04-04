@@ -14,4 +14,4 @@ _displayHelpMessage:
 	@echo "\t- zip: Pack the plugin into a zip file to distribute"
 
 _createPluginZipFile: _cleanUpTargetDir
-	zip -r -9 target/ozh-tweet-archiver.zip ozh-tweet-archiver
+	zip -r -9 target/ozh-tweet-archiver.zip ozh-tweet-archiver readme.txt
