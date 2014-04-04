@@ -32,7 +32,7 @@ function ozh_ta_init_settings() {
 	// Twitter section: access token field
 	add_settings_field(
 		'ozh_ta_setting_access_token',  // setting ID
-		'Enter your Access Token',      // text on the left
+		'OAuth 2.0 Access Token',       // text on the left
 		'ozh_ta_setting_access_token',  // callback function for field
 		'ozh_ta',                       // plugin page
 		'ozh_ta_section_twitter'        // section name
