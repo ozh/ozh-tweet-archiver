@@ -26,6 +26,8 @@ Author URI: http://ozh.org/
  
  FIX: screenshot no longer accurate
  
+ CHANGE: turn debug off before shipping to WP
+ 
  Add:
  Embed pic.twitter images ?
  other images ?
