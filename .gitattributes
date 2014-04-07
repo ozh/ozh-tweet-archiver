@@ -1,0 +1,10 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Generate pretty patches for PHP
+*.php diff=php
+
+# Exclude when generating an archive
+.gitignore export-ignore
+.gitattributes export-ignore
+readme.md export-ignore
