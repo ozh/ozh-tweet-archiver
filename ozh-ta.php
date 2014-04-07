@@ -14,12 +14,31 @@ Author URI: http://ozh.org/
    1.1     change to Twitter API v1.1
 */
 
+/*
+ TODO: 
+ 
+ FIX: pic.twitter.com -> t.co
+ http://twitter.com/ozh/statuses/439835515802886144
+ https://twitter.com/ozh/statuses/445629689604755456 
+ 
+ FIX: backslashes are stripped
+ https://twitter.com/ozh/statuses/435501668822966273
+ 
+ FIX: screenshot no longer accurate
+ 
+ Add:
+ Embed pic.twitter images ?
+ other images ?
+
+*/
+
+
 // Constants that should work for everyone
 define( 'OZH_TA_API', 'https://api.twitter.com/1.1/statuses/user_timeline.json' ); // Twitter API url (1.1 version)
-define( 'OZH_TA_BATCH', 100 );	// How many tweets to import at most. 200 is the max allowed on Twitter. Take it easy on shared hosting.
-define( 'OZH_TA_DEBUG', false ); // Log debug messages
+define( 'OZH_TA_BATCH', 50 );	     // How many tweets to import at most. Take it easy on shared hosting.
+define( 'OZH_TA_DEBUG', true );      // Log debug messages
 define( 'OZH_TA_NEXT_SUCCESS', 10 ); // How long to wait between sucessfull batches
-define( 'OZH_TA_NEXT_FAIL', 90 ); // How long to wait after a Fail Whale
+define( 'OZH_TA_NEXT_FAIL', 120 );   // How long to wait after a Fail Whale
 
 global $ozh_ta;
 
@@ -30,7 +49,7 @@ add_action( 'ozh_ta_cron_import', 'ozh_ta_cron_import' );
 add_action( 'init',        'ozh_ta_init' );
 add_action( 'admin_init',  'ozh_ta_load_admin' );
 add_action( 'admin_menu',  'ozh_ta_add_page');
-add_filter( 'the_content', 'ozh_ta_linkify' );
+add_filter( 'the_content', 'ozh_ta_add_tags' );
 
 // Import tweets from cron job
 function ozh_ta_cron_import() {
@@ -61,10 +80,17 @@ function ozh_ta_load_admin() {
 	ozh_ta_require( 'settings.php' );
 	ozh_ta_require( 'option-page.php' );
 	ozh_ta_init_settings();
-	if( !$ozh_ta['screen_name'] )
+	if( !ozh_ta_is_configured() ) {
 		add_action( 'admin_notices', 'ozh_ta_notice_config' );
+    }
 	add_filter( 'plugin_row_meta', 'ozh_ta_plugin_row_meta', 10, 2 );
 	add_filter( 'plugin_action_links_'.plugin_basename( __FILE__ ), 'ozh_ta_plugin_actions' );
+}
+
+// Is the plugin configured? Return bool
+function ozh_ta_is_configured() {
+    global $ozh_ta;
+    return ( isset( $ozh_ta['access_token'] ) && $ozh_ta['access_token'] && isset( $ozh_ta['screen_name'] ) && $ozh_ta['screen_name'] );
 }
 
 // Plugin action links
@@ -72,7 +98,7 @@ function ozh_ta_plugin_actions( $actions ) {
 	global $ozh_ta;
 	$class = '';
 	$text = 'Configure';
-	if( !isset( $ozh_ta['screen_name'] ) or empty( $ozh_ta['screen_name'] ) ) {
+	if( !ozh_ta_is_configured() ) {
 		$class = 'delete';
 		$text .= ' now!';
 	}
@@ -94,60 +120,19 @@ function ozh_ta_add_page() {
 	$page = add_options_page( 'Ozh\' Tweet Archiver', 'Tweet Archiver', 'manage_options', 'ozh_ta', 'ozh_ta_do_page' );
 }
 
-// Add links to URLs, @usernames and #hashtags.
-// This is to be hooked into filter 'the_content'
-function ozh_ta_linkify( $text ) {
-	global $ozh_ta;
+// Add post tags if applicable
+// This is hooked into filter 'the_content'
+function ozh_ta_add_tags( $text ) {
+	global $ozh_ta, $id;
+    
+    // is there any #hashtag here ?
+    if( $ozh_ta['add_hash_as_tags'] == 'yes' && $hashtags = get_post_meta( $id, 'ozh_ta_has_hashtags', true ) ) {
+        ozh_ta_debug( "Tagging post $id with ".implode( ', ', $hashtags ) );
+        wp_set_post_tags( $id, implode( ', ', $hashtags ) );
+        delete_post_meta( $id, 'ozh_ta_has_hashtags' );
+    }
 	
-	// Linkify twitter names if applicable
-	if( $ozh_ta['link_usernames'] == 'yes' ) {
-		$nofollow = apply_filters( 'ozh_ta_username_nofollow', 'rel="nofollow"' );
-		$text = preg_replace(
-			'/(\W)@(\w+)/',
-			'\\1@<a href="http://twitter.com/\\2" '.$nofollow.'>\\2</a>',
-			$text
-		);
-	}
-	
-	if( $ozh_ta['link_hashtags'] != 'no' ) {
-		// find hashtags
-		preg_match_all( '/\B#(\w*[a-zA-Z-]+\w*)/', $text, $matches );
-		$hashtags = $matches[0]; // #bleh
-		$tags = $matches[1];     //  bleh
-		unset( $matches );
-		
-		if( $hashtags ) {
-		
-			// Check if post has been already tagged, if not, tag it
-			global $id;
-			if( !get_post_meta( $id, 'ozh_ta_tagged', true ) ){
-				ozh_ta_debug( "Tagging post $id with ".implode( ', ', $hashtags ) );
-				wp_set_post_tags( $id, implode( ', ', $tags ) );
-				add_post_meta( $id, 'ozh_ta_tagged', '1', true );
-			}
-			
-			$nofollow = apply_filters( 'ozh_ta_hashtag_nofollow', 'rel="nofollow"' );
-			// Replace the array $tag with an array of links
-			array_walk( $tags, 'ozh_ta_linkify_'.$ozh_ta['link_hashtags'], $nofollow );
-			// Linkify hashtags
-			$text = str_replace( $hashtags, $tags, $text );	
-		}
-	}
-	
-	// Linkify other links. Note: nofollowed by WP and there's no filters on this
-	$text = make_clickable( $text );
-
 	return apply_filters( 'ozh_ta_post_linkify', $text );
-}
-
-// Create a Twitter search link (array_walk() callback)
-function ozh_ta_linkify_twitter( &$tag, $key, $nofollow ) {
-	$tag = '<a href="http://search.twitter.com/search?q=%23'.$tag.'" '.$nofollow.'>#'.$tag.'</a>';
-}
-
-// Create a local tag link (array_walk() callback)
-function ozh_ta_linkify_local( &$tag, $key, $nofollow ) {
-	$tag = '<a href="'.ozh_ta_get_tag_link( $tag ).'">#'.$tag.'</a>';
 }
 
 // Get link for a given tag.
@@ -177,17 +162,21 @@ function ozh_ta_defaults() {
 	
 	return array(
 		// plugin:
-		'refresh_interval' => 5*60, // 5 minutes
-		'post_category' => get_option('default_category'), // integer
-		'post_author' => $wpdb->get_var("SELECT ID FROM $wpdb->users ORDER BY ID LIMIT 1"), // first user id found
-		'link_hashtags' => 'twitter', // can be no/local/twitter
-		'add_hash_as_tags' => 'yes', // can be yes/no
-		'link_usernames' => 'yes', // can be yes/no
+		'refresh_interval'       => 60*60, // 60 minutes
+		'post_category'          => get_option('default_category'), // integer
+		'post_author'            => $wpdb->get_var("SELECT ID FROM $wpdb->users ORDER BY ID LIMIT 1"), // first user id found
+		'link_hashtags'          => 'local', // can be no/local/twitter
+		'add_hash_as_tags'       => 'yes', // can be yes/no
+		'link_usernames'         => 'yes', // can be yes/no
+		'un_tco'                 => 'yes', // can be yes/no
 		'last_tweet_id_inserted' => 1, // ID of last inserted tweet
-		'api_page' => 1, // current page being polled on the API
+		'api_page'               => 1, // current page being polled on the API
 		
 		// twitter user:
-		'screen_name' => '',
+		'screen_name'   => '',
+		'cons_key'      => '',
+		'cons_secret'   => '',
+		'access_token'  => '',
 		'twitter_stats' => array (),
 	);
 }
@@ -245,4 +234,36 @@ function ozh_ta_debug( $in ) {
 	$ts = date('r');
 	
 	error_log( "$ts: $in\n", 3, dirname(__FILE__).'/debug.log' );
+}
+
+// Return OAuth2 token, or false
+function ozh_ta_get_token( $consumer_key, $consumer_secret ) {
+    $bearer_token_credential = $consumer_key . ':' . $consumer_secret;
+    $credentials = base64_encode( $bearer_token_credential );
+
+    $args = array(
+        'method'      => 'POST',
+        'httpversion' => '1.1',
+        'blocking'    => true,
+        'body'        => array( 'grant_type' => 'client_credentials' ),
+        'headers'     => array( 
+            'Authorization' => 'Basic ' . $credentials,
+            'Content-Type'  => 'application/x-www-form-urlencoded;charset=UTF-8',
+        ),
+    );
+
+    add_filter( 'https_ssl_verify', '__return_false' );
+    $response = wp_remote_post( 'https://api.twitter.com/oauth2/token', $args );
+
+    $keys = json_decode($response['body']);
+    
+    if( $keys && isset( $keys->access_token ) ) {
+        $return = $keys->access_token;
+    } else {
+        $return = false;
+    }
+    
+    ozh_ta_debug( 'Getting token: ' . $return );
+
+    return $return;
 }

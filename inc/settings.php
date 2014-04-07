@@ -23,19 +23,27 @@ function ozh_ta_init_settings() {
 	);
 	// Twitter section: screen name field
 	add_settings_field(
-		'ozh_ta_setting_screen_name',   // setting ID
-		'Enter your Twitter user name', // text on the left
-		'ozh_ta_setting_screen_name',   // callback function for field
-		'ozh_ta',                       // plugin page
-		'ozh_ta_section_twitter'        // section name
+		'ozh_ta_setting_screen_name',  // setting ID
+		'Twitter user name',           // text on the left
+		'ozh_ta_setting_screen_name',  // callback function for field
+		'ozh_ta',                      // plugin page
+		'ozh_ta_section_twitter'       // section name
 	);
-	// Twitter section: access token field
+	// Twitter section: consumer key
 	add_settings_field(
-		'ozh_ta_setting_access_token',  // setting ID
-		'OAuth 2.0 Access Token',       // text on the left
-		'ozh_ta_setting_access_token',  // callback function for field
-		'ozh_ta',                       // plugin page
-		'ozh_ta_section_twitter'        // section name
+		'ozh_ta_setting_cons_key',  // setting ID
+		'Consumer Key',             // text on the left
+		'ozh_ta_setting_cons_key',  // callback function for field
+		'ozh_ta',                   // plugin page
+		'ozh_ta_section_twitter'    // section name
+	);
+	// Twitter section: consumer secret
+	add_settings_field(
+		'ozh_ta_setting_cons_secret', // setting ID
+		'Consumer Key',               // text on the left
+		'ozh_ta_setting_cons_secret', // callback function for field
+		'ozh_ta',                     // plugin page
+		'ozh_ta_section_twitter'      // section name
 	);
 	// Plugin section: lots of fields
 	$fields = array(
@@ -45,6 +53,7 @@ function ozh_ta_init_settings() {
 		'link_usernames'   => 'Link @usernames',
 		'link_hashtags'    => 'Link #hashtags',
 		'add_hash_as_tags' => 'Add hashtags as post tags',
+		'un_tco'           => 'Expand <code>t.co</code> links',
 	);
 	foreach( $fields as $field => $text ) {
 		add_settings_field(
@@ -60,12 +69,12 @@ function ozh_ta_init_settings() {
 
 // Plugin settings section header
 function ozh_ta_section_plugin_text() {
-	echo '<p>Configure how the plugin will archive the tweets</p>';
+	echo '<p>Configure how the plugin will archive the tweets (default settings will work just fine)</p>';
 }
 
 // Twitter settings section header
 function ozh_ta_section_twitter_text() {
-	// bleh. No need.
+	echo '<p>Create a new application on <a href="https://apps.twitter.com/">https://apps.twitter.com/</a>, then click on the <strong>Test OAuth</strong> button to get your consumer key and consumer secret.</p>';
 }
 
 // Wrapper for all fields
@@ -77,7 +86,8 @@ function ozh_ta_setting( $setting ) {
 	// echo the field
 	switch( $setting ) {
 	case 'screen_name':
-	case 'access_token':
+	case 'cons_key':
+	case 'cons_secret':
 		$value = esc_attr( $value );
 		echo "<input id='$setting' name='ozh_ta[$setting]' type='text' value='$value' />";
 		break;
@@ -139,13 +149,30 @@ function ozh_ta_setting( $setting ) {
 		}
 		echo "</select>\n";
 
-		echo "<br/>Example: \"<span id='helper_link_usernames' class='tweet_sample'>Check the other
-		#WordPress
-		stuff by
+		echo "<br/>Example: \"<span id='helper_link_usernames' class='tweet_sample'>Thank you
 		<span id='toggle_link_usernames_no' class='toggle_link_usernames' style='display:". ($value == 'no' ? 'inline' : 'none') ."'>@ozh</span>
-		<span id='toggle_link_usernames_yes' class='toggle_link_usernames' style='display:". ($value == 'yes' ? 'inline' : 'none') ."'>@<a href='http://twitter.com/ozh'>ozh</a></span>
-		<a href='http://ozh.in/projects'>http://ozh.in/projects</a></span>\"";
+		<span id='toggle_link_usernames_yes' class='toggle_link_usernames' style='display:". ($value == 'yes' ? 'inline' : 'none') ."'>@<a href='https://twitter.com/ozh'>ozh</a></span>
+		for the #WordPress plugins!</span>\"";
 
+		break;
+		
+	case 'un_tco':
+		$options = array(
+			'no'  => 'No',
+			'yes' => 'Yes',
+		);
+        $value = ( $value == 'yes' ? 'yes' : 'no' );
+		echo "<select class='toggler' id='$setting' name='ozh_ta[$setting]'>\n";
+		foreach( $options as $option => $desc ){
+			echo "<option value='$option' ".selected( $option, $value, false ).">$desc</option>\n";
+		}
+		echo "</select>\n";
+		
+		echo "<br/>Example: \"<span id='helper_un_tco' class='tweet_sample fade-303060 fade'>Wow super site 
+		<span id='toggle_un_tco_no' class='toggle_un_tco' style='display:". ($value == 'no' ? 'inline' : 'none') ."'><a href='http://t.co/JeIYgZHB6o'>t.co/JeIYgZHB6o</a></span>
+		<span id='toggle_un_tco_yes' class='toggle_un_tco' style='display:". ($value == 'yes' ? 'inline' : 'none') ."'><a href='http://ozh.org/'>ozh.org</a></span>
+		! Check it out!</span>\"";
+		
 		break;
 		
 	case 'link_hashtags':
@@ -169,11 +196,11 @@ function ozh_ta_setting( $setting ) {
 		}
 		echo "</select>\n";
 		
-		echo "<br/>Example: \"<span id='helper_link_hashtags' class='tweet_sample fade-303060 fade'>Check the other
+		echo "<br/>Example: \"<span id='helper_link_hashtags' class='tweet_sample fade-303060 fade'>Thank you @ozh for the
 		<span id='toggle_link_hashtags_no' class='toggle_link_hashtags' style='display:". ($value == 'no' ? 'inline' : 'none') ."'>#WordPress</span>
 		<span id='toggle_link_hashtags_twitter' class='toggle_link_hashtags' style='display:". ($value == 'twitter' ? 'inline' : 'none') ."'><a href='http://search.twitter.com/search?q=%23WordPress'>#WordPress</a></span>
 		<span id='toggle_link_hashtags_local' class='toggle_link_hashtags' style='display:". ($value == 'local' ? 'inline' : 'none') ."'><a href='".ozh_ta_get_tag_link('wordpress')."'>#WordPress</a></span>
-		stuff by @ozh <a href='http://ozh.in/projects'>http://ozh.in/projects</a></span>\"";
+		plugins!</span>\"";
 		
 		break;
 		
@@ -198,9 +225,14 @@ function ozh_ta_setting_screen_name() {
 	ozh_ta_setting( 'screen_name' );
 }
 
-// Field: access_token
-function ozh_ta_setting_access_token() {
-	ozh_ta_setting( 'access_token' );
+// Field: cons_key
+function ozh_ta_setting_cons_key() {
+	ozh_ta_setting( 'cons_key' );
+}
+
+// Field: cons_secret
+function ozh_ta_setting_cons_secret() {
+	ozh_ta_setting( 'cons_secret' );
 }
 
 // Field: refresh_interval
@@ -228,6 +260,11 @@ function ozh_ta_setting_link_hashtags() {
 	ozh_ta_setting( 'link_hashtags' );
 }
 
+// Field: un_tco
+function ozh_ta_setting_un_tco() {
+	ozh_ta_setting( 'un_tco' );
+}
+
 // Field: add_hash_as_tags
 function ozh_ta_setting_add_hash_as_tags() {
 	ozh_ta_setting( 'add_hash_as_tags' );
@@ -246,11 +283,20 @@ function ozh_ta_setting_input() {
 function ozh_ta_validate_options( $input ) {
 	global $ozh_ta;
 	
-	// Screw validation. Just don't be an idiot.	
-	
-	// don't lose stuff that are not "settings" submitted in the plugin page
-	$input = array_merge( $ozh_ta, $input );
+	// Screw validation. Just don't be an idiot.
+    
+    // Reset if applicable
+    if( isset( $_POST['delete_btn'] ) ) {
+        $input = array();
+    } else {
+        // don't lose stuff that are not "settings" submitted in the plugin page
+        $input = array_merge( $ozh_ta, $input );
+        
+        // Consumer key & secret defined? Get an OAuth token
+        if( isset( $input['cons_key'] ) && isset( $input['cons_secret'] ) && !ozh_ta_is_manually_archiving() ) {
+            $input['access_token'] = ozh_ta_get_token( $input['cons_key'], $input['cons_secret'] );
+        }
+    }
 
 	return $input;
 }
-

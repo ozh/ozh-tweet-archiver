@@ -6,47 +6,57 @@ function ozh_ta_get_tweets( $echo = false ) {
 	global $ozh_ta;
 	
 	ozh_ta_schedule_next( 0 ); // clear scheduling
-
-	if( !$ozh_ta['screen_name'] ) {
-		ozh_ta_debug( 'No screen name defined' );
-		return false;
-	}
-	
-	if( !$ozh_ta['access_token'] ) {
-		ozh_ta_debug( 'No access token defined' );
-		return false;
-	}
+    
+    if( !ozh_ta_is_configured() ) {
+		ozh_ta_debug( 'Config incomplete, cannot import tweets' );
+        return false;
+    }
 
 	$api = add_query_arg( array(
-		'count' => OZH_TA_BATCH,
-		'page' => $ozh_ta['api_page'],
+		'count'       => OZH_TA_BATCH,
+		'page'        => $ozh_ta['api_page'],
 		'screen_name' => urlencode( $ozh_ta['screen_name'] ),
-		'since_id' => $ozh_ta['last_tweet_id_inserted']
+		'since_id'    => $ozh_ta['last_tweet_id_inserted']
 	), OZH_TA_API );
 	
 	ozh_ta_debug( "Polling $api" );
 	
 	$headers = array(
-		'Authorization' => 'Bearer ' . $ozh_ta['access_token']
+		'Authorization' => 'Bearer ' . $ozh_ta['access_token'],
 	);
 
-	ozh_ta_debug( "Headers: " . json_encode( $headers ));
+	ozh_ta_debug( "Headers: " . json_encode( $headers ) );
 	
 	$response = wp_remote_get( $api, array(
 		'headers' => $headers,
 		'timeout' => 10
 	) );
+    
 	$tweets = wp_remote_retrieve_body( $response );
-	// Fix integers in the JSON response to have them handled as strings and not integers
-	$tweets = preg_replace( '/"\s*:\s*([\d]+)\s*([,}{])/', '": "$1"$2', $tweets );
-	$ratelimit = wp_remote_retrieve_header( $response, 'X-Rate-Limit-Limit' );
-	$ratelimit_r = wp_remote_retrieve_header( $response, 'X-Rate-Limit-Remaining' );
+	$ratelimit = wp_remote_retrieve_header( $response, 'x-rate-limit-limit' );
+	$ratelimit_r = wp_remote_retrieve_header( $response, 'x-rate-limit-remaining' );
+    $status = wp_remote_retrieve_response_code( $response );
+    
+	ozh_ta_debug( "status: $status" );
+	ozh_ta_debug( "rate: $ratelimit_r/$ratelimit" );
 	
-	ozh_ta_debug( "rate: $ratelimit_r" );
-	
-	// Fail Whale FTW
-	if ( !$tweets or strpos( $tweets, 'Please wait a moment and try again. For more information, check out <a href="http://status.twitter.com">Twitter Status &raquo;</a></p>' ) ) {
-	
+	// Fail Whale or other error
+	if ( !$tweets or $status != 200 ) {
+        
+        // 401 : Unauthorized
+        if( $status == 401 ) {
+            ozh_ta_debug( 'Could not fetch tweets: unauthorized access.' );
+            if( $echo ) {
+                wp_die( '<p>Twitter returned an "Unauthorized" error. Check your consumer key and secret!</p>' );
+            } else {
+                // TODO: what to do in such a case? Better not to silently die and do nothing.
+                // Email blog admin ?
+                return false;
+            }
+        }
+        
+        // 419 : Rate limit exceeded
+        // 5xx : Fail whale
 		ozh_ta_debug( 'Twitter fail, retry in '.OZH_TA_NEXT_FAIL );
 
 		// Context: from option page
@@ -57,37 +67,46 @@ function ozh_ta_get_tweets( $echo = false ) {
 		
 		// Context: from cron
 		} else {
-			// schedule same operation in 60 seconds
+			// schedule same operation later
 			ozh_ta_schedule_next( OZH_TA_NEXT_FAIL );
 			return false;
 		}
 	}
 	
 	// No Fail Whale, let's import
+
+	// Legacy note:
+    // We used to have to fix integers in the JSON response to have them handled as strings and not integers,
+    // to avoid having tweet ID 438400650846928897 interpreted as 4.34343e15
+	// $tweets = preg_replace( '/"\s*:\s*([\d]+)\s*([,}{])/', '": "$1"$2', $tweets );
+    // This isn't needed anymore since, smartly, Twitter's API returns both an id and an id_str. Nice, Twitter :)
+
 	$tweets = array_reverse( (array)json_decode( $tweets ) );
-	
+    
 	// Tweets found, let's archive
 	if ( $tweets ) {
-		$results = ozh_ta_insert_tweets( $tweets, true );
-		// array( "inserted", "last_tweet_id_inserted", (array)$user );
-		
+
+        $results = ozh_ta_insert_tweets( $tweets, true );
+		// array( inserted, skipped, last_tweet_id_inserted, (array)$user );
+        // die();
+        
 		// Record highest temp last_tweet_id_inserted, increment api_page and update user info
 		$ozh_ta['_last_tweet_id_inserted'] = max( $results['last_tweet_id_inserted'], $ozh_ta['_last_tweet_id_inserted'] );
 		$ozh_ta['twitter_stats'] = array_merge( $ozh_ta['twitter_stats'], $results['user'] );
 		$ozh_ta['api_page']++;
 		update_option( 'ozh_ta', $ozh_ta );
 
-		ozh_ta_debug( "Twitter OK, imported {$results['inserted']}, next in ".OZH_TA_NEXT_SUCCESS );
+		ozh_ta_debug( "Twitter OK, imported {$results['inserted']}, skipped {$results['skipped']}, next in ".OZH_TA_NEXT_SUCCESS );
 
 		// Context: option page
 		if( $echo ) {
-			echo "<p>Tweets inserted:<strong>{$results[ 'inserted' ]}</strong></p>";
+			echo "<p>Tweets inserted: <strong>{$results[ 'inserted' ]}</strong></p>";
 			$url = wp_nonce_url( admin_url( 'options-general.php?page=ozh_ta&action=import_all&time='.time() ), 'ozh_ta-import_all' );
 			ozh_ta_reload( $url, OZH_TA_NEXT_SUCCESS );
 		
 		// Context: from cron
 		} else {
-			// schedule next operation in 30 seconds
+			// schedule next operation soon
 			ozh_ta_schedule_next( OZH_TA_NEXT_SUCCESS );
 		}
 				
@@ -98,7 +117,7 @@ function ozh_ta_get_tweets( $echo = false ) {
 	
 		// Schedule next operation
 		ozh_ta_schedule_next( $ozh_ta['refresh_interval'] );
-		ozh_ta_debug( "Twitter finished, imported {$result['inserted']}, next in {$ozh_ta['refresh_interval']}" );
+		ozh_ta_debug( "Twitter finished, next in {$ozh_ta['refresh_interval']}" );
 		
 		// Update real last_tweet_id_inserted, stats, & reset API paging
 		$ozh_ta['last_tweet_id_inserted'] = max( $ozh_ta['last_tweet_id_inserted'], $ozh_ta['_last_tweet_id_inserted'] );
@@ -120,9 +139,86 @@ function ozh_ta_get_tweets( $echo = false ) {
 	return true;
 }
 
+// Linkify @usernames, #hashtags and t.co links, then return text 
+function ozh_ta_linkify_tweet( $tweet ) {
+    global $ozh_ta;
+    
+    $text = $tweet->text;
+    
+	// Linkify twitter names if applicable
+    if( $mentions = $tweet->entities->user_mentions ) {
+        foreach( $mentions as $mention ) {
+            $screen_name       = $mention->screen_name;
+            $name              = $mention->name;
+            
+            // Convert to link or to span
+            if( $ozh_ta['link_usernames'] == 'yes' ) {
+                $replace = sprintf( '<span class="username username_linked">@<a href="https://twitter.com/%s" title="%s">%s</a></span>',
+                                    $screen_name, esc_attr( $name ), $screen_name );
+            } else {
+                $replace = sprintf( '<span title="%s" class="username username_unlinked">@%s</a>',
+                                    esc_attr( $name ), $screen_name );
+            }
+            
+            $text = preg_replace( '/\@' . $screen_name . '/', $replace, $text, 1 );
+        }
+    }
+    
+	// un-t.co links if applicable
+    if( $urls = $tweet->entities->urls ) {
+        foreach( $urls as $url ) {
+            $expanded_url      = esc_url( $url->expanded_url );
+            $display_url       = $url->display_url;
+            $tco_url           = $url->url;
+            
+            // Convert links
+            if( $ozh_ta['un_tco'] == 'yes' ) {
+                $replace = sprintf( '<a href="%s" title="%s" class="link link_untco">%s</a>',
+                                    $expanded_url, esc_attr( $expanded_url ), $display_url );
+            } else {
+                $replace = sprintf( '<a href="%s" class="link link_tco">%s</a>',
+                                    $tco_url, $tco_url );
+            }
+            
+            $text = preg_replace( '!' . $tco_url . '!', $replace, $text, 1 ); // using ! instead of / because URLs contain / already ;P
+        }
+    }
+    
+	// hashtag links if applicable
+    if( $hashes = $tweet->entities->hashtags ) {
+        foreach( $hashes as $hash ) {
+            $hash_text         = $hash->text;
+            
+            // Convert hashtags
+            switch( $ozh_ta['link_hashtags'] ) {
+            
+                case 'twitter':
+                $replace = sprintf( '<span class="hashtag hashtag_twitter">#<a href="%s">%s</a></span>',
+                                    'https://twitter.com/search?q=%23' . $hash_text, $hash_text );
+                break;    
+            
+                case 'local':
+                $replace = sprintf( '<span class="hashtag hashtag_local">#<a href="%s">%s</a>',
+                                    ozh_ta_get_tag_link( $hash_text ), $hash_text );
+                break;    
+            
+                case 'no':
+                $replace = sprintf( '<span class="hashtag hashtag_no">%s</span>',
+                                    '#' . $hash_text );
+                break;    
+            
+            }
+            
+            $text = preg_replace( '/\#' . $hash_text . '/', $replace, $text, 1 );
+        }
+    }
+    
+    return $text;
+}
+
 // Insert tweets as posts
 function ozh_ta_insert_tweets( $tweets, $display = false ) {
-	$inserted = 0;
+	$inserted = $skipped = 0;
 	$user = array();
 	
 	global $ozh_ta;
@@ -130,22 +226,23 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 	foreach ( (array)$tweets as $tweet ) {
 		
 		// Current tweet
-		$tid    = (string)$tweet->id;
-		$text   = $tweet->text;
-		$date   = date( 'Y-m-d H:i:s', strtotime( $tweet->created_at ) );
-		$source = $tweet->source;
+		$tid            = (string)$tweet->id_str;
+		$text           = ozh_ta_linkify_tweet( $tweet );
+		$date           = date( 'Y-m-d H:i:s', strtotime( $tweet->created_at ) );
+		$source         = $tweet->source;
+        $has_hashtags   = count( $tweet->entities->hashtags ) > 0;
 		$reply_to_name  = $tweet->in_reply_to_screen_name;
-		$reply_to_tweet = (string)$tweet->in_reply_to_status_id;
-		
+		$reply_to_tweet = (string)$tweet->in_reply_to_status_id_str;
+        
 		// Info about Twitter user
 		if( !$user ) {
 			$user = array(
-				'tweet_counts' => $tweet->user->statuses_count,
-				'followers' => $tweet->user->followers_count,
-				'following' => $tweet->user->friends_count,
-				'listed_count' => $tweet->user->listed_count,
+				'tweet_counts'      => $tweet->user->statuses_count,
+				'followers'         => $tweet->user->followers_count,
+				'following'         => $tweet->user->friends_count,
+				'listed_count'      => $tweet->user->listed_count,
 				'profile_image_url' => $tweet->user->profile_image_url,
-				'tweeting_since' => date( 'Y-m-d H:i:s', strtotime( $tweet->user->created_at ) ),
+				'tweeting_since'    => date( 'Y-m-d H:i:s', strtotime( $tweet->user->created_at ) ),
 			);
 		}
 		
@@ -158,12 +255,12 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 
 			// Insert tweet as new post
 			$post = array(
-				'post_title'   => $text,
-				'post_content' => $text,
-				'post_date'    => $date,
-				'post_category'=> array( $ozh_ta['post_category'] ),
-				'post_status'  => 'publish',
-				'post_author'  => $ozh_ta['post_author'],
+				'post_title'    => strip_tags( $text ),
+				'post_content'  => $text,
+				'post_date'     => $date,
+				'post_category' => array( $ozh_ta['post_category'] ),
+				'post_status'   => 'publish',
+				'post_author'   => $ozh_ta['post_author'],
 			);
 			// Plugins: hack here
 			$post = apply_filters( 'ozh_ta_insert_tweets_post', $post ); 
@@ -178,21 +275,25 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 				add_post_meta( $post_id, 'ozh_ta_reply_to_name', $reply_to_name, true );
 			if( $reply_to_tweet )
 				add_post_meta( $post_id, 'ozh_ta_reply_to_tweet', $reply_to_tweet, true );
+			if( $has_hashtags )
+				add_post_meta( $post_id, 'ozh_ta_has_hashtags', ozh_ta_get_hashtags( $tweet ), true );
 		
 			$last_tweet_id_inserted = $tid;
-			ozh_ta_debug( "Inserted $post_id (tweet id: $tid, tweet: ". substr($text, 0, 45) ."...)" );
+			ozh_ta_debug( "Inserted $post_id (tweet id: $tid, tweet: ". substr($text, 0, 100) ."...)" );
 			$inserted++;
 			
 		} else {
 			// This tweet has already been imported ?!
 			ozh_ta_debug( "Skipping tweet $tid, already imported?!" );
+            $skipped++;
 		}
 	}
 
 	return array(
-		'inserted' => $inserted,
+		'inserted'               => $inserted,
+        'skipped'                => $skipped,
 		'last_tweet_id_inserted' => $tid,
-		'user' => $user,
+		'user'                   => $user,
 	);
 }
 
@@ -207,4 +308,11 @@ function ozh_ta_schedule_next( $delay = 30 ) {
 	}
 }
 
-
+// Return list of hashtags for a given tweet
+function ozh_ta_get_hashtags( $tweet ) {
+    $list = array();
+    foreach( $tweet->entities->hashtags as $tag ) {
+        $list[] = $tag->text;
+    }
+    return $list;
+}
