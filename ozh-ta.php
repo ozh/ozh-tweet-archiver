@@ -17,10 +17,6 @@ Author URI: http://ozh.org/
 /*
  TODO: 
  
- FIX: pic.twitter.com -> t.co
- http://twitter.com/ozh/statuses/439835515802886144
- https://twitter.com/ozh/statuses/445629689604755456 
- 
  FIX: backslashes are stripped
  https://twitter.com/ozh/statuses/435501668822966273
  
@@ -28,10 +24,6 @@ Author URI: http://ozh.org/
  
  CHANGE: turn debug off before shipping to WP
  
- Add:
- Embed pic.twitter images ?
- other images ?
-
 */
 
 
@@ -170,6 +162,7 @@ function ozh_ta_defaults() {
 		'link_hashtags'          => 'local', // can be no/local/twitter
 		'add_hash_as_tags'       => 'yes', // can be yes/no
 		'link_usernames'         => 'yes', // can be yes/no
+		'embed_images'           => 'yes', // can be yes/no
 		'un_tco'                 => 'yes', // can be yes/no
 		'last_tweet_id_inserted' => 1, // ID of last inserted tweet
 		'api_page'               => 1, // current page being polled on the API

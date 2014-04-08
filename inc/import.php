@@ -148,8 +148,8 @@ function ozh_ta_linkify_tweet( $tweet ) {
 	// Linkify twitter names if applicable
     if( $mentions = $tweet->entities->user_mentions ) {
         foreach( $mentions as $mention ) {
-            $screen_name       = $mention->screen_name;
-            $name              = $mention->name;
+            $screen_name = $mention->screen_name;
+            $name        = $mention->name;
             
             // Convert to link or to span
             if( $ozh_ta['link_usernames'] == 'yes' ) {
@@ -167,14 +167,14 @@ function ozh_ta_linkify_tweet( $tweet ) {
 	// un-t.co links if applicable
     if( $urls = $tweet->entities->urls ) {
         foreach( $urls as $url ) {
-            $expanded_url      = esc_url( $url->expanded_url );
-            $display_url       = $url->display_url;
-            $tco_url           = $url->url;
+            $expanded_url = $url->expanded_url;
+            $display_url  = $url->display_url;
+            $tco_url      = $url->url;
             
             // Convert links
             if( $ozh_ta['un_tco'] == 'yes' ) {
                 $replace = sprintf( '<a href="%s" title="%s" class="link link_untco">%s</a>',
-                                    $expanded_url, esc_attr( $expanded_url ), $display_url );
+                                    $expanded_url, $expanded_url, $display_url );
             } else {
                 $replace = sprintf( '<a href="%s" class="link link_tco">%s</a>',
                                     $tco_url, $tco_url );
@@ -212,6 +212,37 @@ function ozh_ta_linkify_tweet( $tweet ) {
             $text = preg_replace( '/\#' . $hash_text . '/', $replace, $text, 1 );
         }
     }
+    
+	// embed images if applicable. This operation shall be the last one
+    if( $medias = $tweet->entities->media ) {
+        foreach( $medias as $media ) {
+            $media_url    = $media->media_url_https;
+            $display_url  = $media->display_url;
+            $expanded_url = $media->expanded_url;
+            $tco_url      = $media->url;
+            
+            // Convert links
+            if( $ozh_ta['un_tco'] == 'yes' ) {
+                $replace = sprintf( '<a href="%s" title="%s" class="link link_untco link_untco_image">%s</a>',
+                                $expanded_url, $expanded_url, $display_url );
+            } else {
+                $replace = sprintf( '<a href="%s" class="link link_tco link_tco_image">%s</a>',
+                                    $tco_url, $tco_url );
+            }
+
+            // Add image
+            if( $ozh_ta['embed_images'] == 'yes' ) {
+                $insert  = sprintf( '<span class="embed_image embed_image_yes"><a href="%s"><img src="%s" /></a></span>',
+                                    $expanded_url, $media_url );
+            } else {
+                $insert  = '';
+            }
+            
+            $text  = preg_replace( '!' . $tco_url . '!', $replace, $text, 1 );
+            $text .= $insert;
+        }
+    }
+    
     
     return $text;
 }
