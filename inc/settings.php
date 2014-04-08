@@ -40,7 +40,7 @@ function ozh_ta_init_settings() {
 	// Twitter section: consumer secret
 	add_settings_field(
 		'ozh_ta_setting_cons_secret', // setting ID
-		'Consumer Key',               // text on the left
+		'Consumer Secret',            // text on the left
 		'ozh_ta_setting_cons_secret', // callback function for field
 		'ozh_ta',                     // plugin page
 		'ozh_ta_section_twitter'      // section name
@@ -75,7 +75,7 @@ function ozh_ta_section_plugin_text() {
 
 // Twitter settings section header
 function ozh_ta_section_twitter_text() {
-	echo '<p>Create a new application on <a href="https://apps.twitter.com/">https://apps.twitter.com/</a>, then click on the <strong>Test OAuth</strong> button to get your consumer key and consumer secret.</p>';
+	echo '<p>Create a new application on <a href="https://apps.twitter.com/app/new">apps.twitter.com</a>, fill in the details, save, then click on the <strong>Test OAuth</strong> button to get your consumer key and consumer secret.</p>';
 }
 
 // Wrapper for all fields

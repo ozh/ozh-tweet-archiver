@@ -3,7 +3,7 @@
 Plugin Name: Ozh' Tweet Archiver
 Plugin URI: http://planetozh.com/blog/my-projects/ozh-tweet-archiver-backup-twitter-with-wordpress/
 Description: Archive your tweets and import them as posts. Can convert #hashtags to WordPress tags.
-Version: 1.1
+Version: 2.0
 Author: Ozh
 Author URI: http://ozh.org/
 */
@@ -11,26 +11,21 @@ Author URI: http://ozh.org/
 /* History
    1.0     initial release
    1.0.1   fix notice when no tweet found
-   1.1     change to Twitter API v1.1
+   2.0     change to Twitter API v1.1, with help from @EHER
+           allow embedding of images
+           allow unwrapping t.co links
 */
 
 /*
- TODO: 
- 
- FIX: backslashes are stripped
- https://twitter.com/ozh/statuses/435501668822966273
- 
- FIX: screenshot no longer accurate
- 
- CHANGE: turn debug off before shipping to WP
- 
+ Known bug:
+ The plugin will eat backslashes. A simple fix would be to replace \ with &#92; prior to inserting, but I haven't checked
+ all potential unwanted side effects yet.
 */
-
 
 // Constants that should work for everyone
 define( 'OZH_TA_API', 'https://api.twitter.com/1.1/statuses/user_timeline.json' ); // Twitter API url (1.1 version)
 define( 'OZH_TA_BATCH', 50 );	     // How many tweets to import at most. Take it easy on shared hosting.
-define( 'OZH_TA_DEBUG', true );      // Log debug messages
+define( 'OZH_TA_DEBUG', false );      // Log debug messages
 define( 'OZH_TA_NEXT_SUCCESS', 10 ); // How long to wait between sucessfull batches
 define( 'OZH_TA_NEXT_FAIL', 120 );   // How long to wait after a Fail Whale
 
