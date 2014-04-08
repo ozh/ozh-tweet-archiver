@@ -88,7 +88,6 @@ function ozh_ta_get_tweets( $echo = false ) {
 
         $results = ozh_ta_insert_tweets( $tweets, true );
 		// array( inserted, skipped, last_tweet_id_inserted, (array)$user );
-        // die();
         
 		// Record highest temp last_tweet_id_inserted, increment api_page and update user info
 		$ozh_ta['_last_tweet_id_inserted'] = max( $results['last_tweet_id_inserted'], $ozh_ta['_last_tweet_id_inserted'] );
