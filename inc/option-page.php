@@ -112,14 +112,14 @@ function ozh_ta_do_page() {
 		echo "</pre>";
 	}
 	
-	if( ozh_ta_is_configured() ) {
-		ozh_ta_do_page_manual();
-	}
-
 	if( wp_next_scheduled( 'ozh_ta_cron_import' ) && !ozh_ta_is_manually_archiving() ) {
 		ozh_ta_do_page_scheduled();
 	}
 	
+	if( ozh_ta_is_configured() ) {
+		ozh_ta_do_page_manual();
+	}
+
 	// Option page when not doing operation
 	if( !isset( $_GET['action'] ) or $_GET['action'] != 'import_all' ) { ?>
 	    <form action="options.php" method="post">
