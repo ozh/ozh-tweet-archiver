@@ -14,7 +14,7 @@ function ozh_ta_source( $echo = true ) {
 }
 add_action( 'ozh_ta_source', 'ozh_ta_source', 10, 0 );
 
-// Template tag: tweet id (eg the 13456464123 part of the http://twitter.com/ozh/statuses/13456464123 )
+// Template tag: tweet id (eg the 13456464123 part of the https://twitter.com/ozh/statuses/13456464123 )
 function ozh_ta_id( $echo = true ) {
 	$what = ozh_ta_get_meta( 'id' );
 	if( $echo )
@@ -23,10 +23,10 @@ function ozh_ta_id( $echo = true ) {
 }
 add_action( 'ozh_ta_id', 'ozh_ta_id', 10, 0 );
 
-// Template tag: tweet link (http://twitter.com/ozh/statuses/13456464123)
+// Template tag: tweet link (https://twitter.com/ozh/statuses/13456464123)
 function ozh_ta_tweet_link( $echo = true ) {
 	global $ozh_ta;
-	$link = 'http://twitter.com/'.$ozh_ta['screen_name'].'/statuses/'.ozh_ta_get_meta( 'id' );
+	$link = 'https://twitter.com/'.$ozh_ta['screen_name'].'/statuses/'.ozh_ta_get_meta( 'id' );
 	if( $echo )
 		echo $link;
 	return $link;
@@ -58,7 +58,7 @@ function ozh_ta_in_reply_to_tweet( $text = 'in reply to %name%', $echo = true ) 
 	if( $tweet && $name ) {
 		$nofollow = apply_filters( 'ozh_ta_reply_to_nofollow', 'rel="nofollow"' );
 		$text = str_replace( '%name%', $name, $text );
-		$link = sprintf( '<a href="http://twitter.com/%s/statuses/%s" %s class="ozh_ta_in_reply">%s</a>',
+		$link = sprintf( '<a href="https://twitter.com/%s/statuses/%s" %s class="ozh_ta_in_reply">%s</a>',
 			$name, $tweet, $nofollow, $text );
 		$link = apply_filters( 'ozh_ta_in_reply_to_tweet_link', $link );
 		if( $echo )

@@ -106,7 +106,7 @@ function ozh_ta_do_page() {
 	
 	</style>
 	<?php
-	if( OZH_TA_DEBUG ) {
+	if( ozh_ta_is_debug() ) {
 		echo "<pre style='border:1px solid;padding:5px 15px;'>";
 		var_dump( $ozh_ta );
 		echo "</pre>";

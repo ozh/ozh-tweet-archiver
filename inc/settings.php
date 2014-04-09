@@ -313,6 +313,7 @@ function ozh_ta_validate_options( $input ) {
     // Reset if applicable
     if( isset( $_POST['delete_btn'] ) ) {
         $input = array();
+        ozh_ta_schedule_next( 0 );
     } else {
         // don't lose stuff that are not "settings" submitted in the plugin page
         $input = array_merge( $ozh_ta, $input );

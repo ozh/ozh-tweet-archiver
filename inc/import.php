@@ -18,13 +18,11 @@ function ozh_ta_get_tweets( $echo = false ) {
 		'screen_name' => urlencode( $ozh_ta['screen_name'] ),
 		'since_id'    => $ozh_ta['last_tweet_id_inserted']
 	), OZH_TA_API );
-	
 	ozh_ta_debug( "Polling $api" );
 	
 	$headers = array(
 		'Authorization' => 'Bearer ' . $ozh_ta['access_token'],
 	);
-
 	ozh_ta_debug( "Headers: " . json_encode( $headers ) );
 	
 	$response = wp_remote_get( $api, array(
@@ -36,9 +34,8 @@ function ozh_ta_get_tweets( $echo = false ) {
 	$ratelimit = wp_remote_retrieve_header( $response, 'x-rate-limit-limit' );
 	$ratelimit_r = wp_remote_retrieve_header( $response, 'x-rate-limit-remaining' );
     $status = wp_remote_retrieve_response_code( $response );
-    
-	ozh_ta_debug( "status: $status" );
-	ozh_ta_debug( "rate: $ratelimit_r/$ratelimit" );
+	ozh_ta_debug( "API status: $status" );
+	ozh_ta_debug( "API rate: $ratelimit_r/$ratelimit" );
 	
 	// Fail Whale or other error
 	if ( !$tweets or $status != 200 ) {
@@ -85,9 +82,9 @@ function ozh_ta_get_tweets( $echo = false ) {
     
 	// Tweets found, let's archive
 	if ( $tweets ) {
-
+    
         $results = ozh_ta_insert_tweets( $tweets, true );
-		// array( inserted, skipped, last_tweet_id_inserted, (array)$user );
+		// array( inserted, skipped, tagged, num_tags, last_tweet_id_inserted, (array)$user );
         
 		// Record highest temp last_tweet_id_inserted, increment api_page and update user info
 		$ozh_ta['_last_tweet_id_inserted'] = max( $results['last_tweet_id_inserted'], $ozh_ta['_last_tweet_id_inserted'] );
@@ -95,11 +92,15 @@ function ozh_ta_get_tweets( $echo = false ) {
 		$ozh_ta['api_page']++;
 		update_option( 'ozh_ta', $ozh_ta );
 
-		ozh_ta_debug( "Twitter OK, imported {$results['inserted']}, skipped {$results['skipped']}, next in ".OZH_TA_NEXT_SUCCESS );
+		ozh_ta_debug( "Twitter OK, imported {$results['inserted']}, skipped {$results['skipped']}, tagged {$results['tagged']} with {$results['num_tags']} tags, next in ".OZH_TA_NEXT_SUCCESS );
 
 		// Context: option page
 		if( $echo ) {
 			echo "<p>Tweets inserted: <strong>{$results[ 'inserted' ]}</strong></p>";
+            if( ozh_ta_is_debug() ) {
+                global $wpdb;
+                ozh_ta_debug( "Queries: " . $wpdb->num_queries );            
+            }
 			$url = wp_nonce_url( admin_url( 'options-general.php?page=ozh_ta&action=import_all&time='.time() ), 'ozh_ta-import_all' );
 			ozh_ta_reload( $url, OZH_TA_NEXT_SUCCESS );
 		
@@ -248,14 +249,27 @@ function ozh_ta_linkify_tweet( $tweet ) {
 
 // Insert tweets as posts
 function ozh_ta_insert_tweets( $tweets, $display = false ) {
-	$inserted = $skipped = 0;
-	$user = array();
-	
+
+    // Flag as importing : this will cut some queries in the process, regarding (ping|track)backs
+    if( !defined( 'WP_IMPORTING' ) )
+        define( 'WP_IMPORTING', true );
+
 	global $ozh_ta;
+	$inserted = $skipped = $tagged = $num_tags = 0;
+	$user = array();
+    
+    if( ozh_ta_is_debug() ) {
+        global $wpdb;
+        $queries_before_insert = $wpdb->num_queries;
+    }
 		
 	foreach ( (array)$tweets as $tweet ) {
 		
-		// Current tweet
+        if( ozh_ta_is_debug() ) {
+            $queries_before_post = $wpdb->num_queries;
+        }
+
+        // Current tweet
 		$tid            = (string)$tweet->id_str;
 		$text           = ozh_ta_linkify_tweet( $tweet );
 		$date           = date( 'Y-m-d H:i:s', strtotime( $tweet->created_at ) );
@@ -291,6 +305,7 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 				'post_category' => array( $ozh_ta['post_category'] ),
 				'post_status'   => 'publish',
 				'post_author'   => $ozh_ta['post_author'],
+                'guid'          => home_url() . '/?tid=' . $tid,  // forcing a GUID will save one query when inserting
 			);
 			// Plugins: hack here
 			$post = apply_filters( 'ozh_ta_insert_tweets_post', $post ); 
@@ -298,18 +313,40 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 			$post_id = wp_insert_post( $post );
 
 			// Insert post meta data
-			add_post_meta( $post_id, 'ozh_ta_id', $tid, true );
+			add_post_meta( $post_id, 'ozh_ta_id', $tid );
 			if( $source )
-				add_post_meta( $post_id, 'ozh_ta_source', $source, true );
+				add_post_meta( $post_id, 'ozh_ta_source', $source );
 			if( $reply_to_name )
-				add_post_meta( $post_id, 'ozh_ta_reply_to_name', $reply_to_name, true );
+				add_post_meta( $post_id, 'ozh_ta_reply_to_name', $reply_to_name );
 			if( $reply_to_tweet )
-				add_post_meta( $post_id, 'ozh_ta_reply_to_tweet', $reply_to_tweet, true );
-			if( $has_hashtags )
-				add_post_meta( $post_id, 'ozh_ta_has_hashtags', ozh_ta_get_hashtags( $tweet ), true );
+				add_post_meta( $post_id, 'ozh_ta_reply_to_tweet', $reply_to_tweet );
+
+            ozh_ta_debug( "Inserted $post_id (tweet id: $tid, tweet: ". substr($text, 0, 100) ."...)" );
 		
-			$last_tweet_id_inserted = $tid;
-			ozh_ta_debug( "Inserted $post_id (tweet id: $tid, tweet: ". substr($text, 0, 100) ."...)" );
+            if( ozh_ta_is_debug() ) {
+                $queries_after_post = $wpdb->num_queries;
+                ozh_ta_debug( "  Import cost: " . ( $queries_after_post - $queries_before_post ) . "( $queries_before_post -> $queries_after_post )" );
+            }
+
+            // Tag post if applicable
+            if( $has_hashtags ) {
+                $hashtags  = ozh_ta_get_hashtags( $tweet );
+                $num_tags += count( $hashtags );
+                $hashtags  = implode( ', ', $hashtags );
+                ozh_ta_debug( "Tagging post $post_id with " . $hashtags );
+                $tagged++;
+                if( ozh_ta_is_debug() ) {
+                    $queries_before_tag = $wpdb->num_queries;
+                }
+                wp_set_post_tags( $post_id, $hashtags );
+                if( ozh_ta_is_debug() ) {
+                    $queries_after_tag = $wpdb->num_queries;
+                    ozh_ta_debug( "  Tagging cost: " . ( $queries_after_tag - $queries_before_tag ) . "( $queries_before_tag -> $queries_after_tag )" );
+                }
+                
+            }
+            
+            $last_tweet_id_inserted = $tid;
 			$inserted++;
 			
 		} else {
@@ -319,23 +356,19 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 		}
 	}
 
-	return array(
+    if( ozh_ta_is_debug() ) {
+        $queries_after_insert = $wpdb->num_queries;
+        ozh_ta_debug( "Batch import cost: " . ( $queries_after_insert - $queries_before_insert ) . "( $queries_before_insert -> $queries_after_insert )" );
+    }
+
+    return array(
 		'inserted'               => $inserted,
         'skipped'                => $skipped,
+        'tagged'                 => $tagged,
+        'num_tags'               => $num_tags,
 		'last_tweet_id_inserted' => $tid,
 		'user'                   => $user,
 	);
-}
-
-
-// Schedule next twitter archiving
-function ozh_ta_schedule_next( $delay = 30 ) {
-	wp_clear_scheduled_hook( 'ozh_ta_cron_import' );
-	ozh_ta_debug( "Schedule cleared" );
-	if( $delay ) {
-		wp_schedule_single_event( time()+$delay, 'ozh_ta_cron_import' );
-		ozh_ta_debug( "Schedule next in $delay" );
-	}
 }
 
 // Return list of hashtags for a given tweet

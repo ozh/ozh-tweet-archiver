@@ -24,10 +24,9 @@ Author URI: http://ozh.org/
 
 // Constants that should work for everyone
 define( 'OZH_TA_API', 'https://api.twitter.com/1.1/statuses/user_timeline.json' ); // Twitter API url (1.1 version)
-define( 'OZH_TA_BATCH', 50 );	     // How many tweets to import at most. Take it easy on shared hosting.
-define( 'OZH_TA_DEBUG', false );      // Log debug messages
-define( 'OZH_TA_NEXT_SUCCESS', 10 ); // How long to wait between sucessfull batches
-define( 'OZH_TA_NEXT_FAIL', 120 );   // How long to wait after a Fail Whale
+define( 'OZH_TA_BATCH', 15 );	    // How many tweets to import at most. Take it easy on shared hosting.
+define( 'OZH_TA_NEXT_SUCCESS', 5 ); // How long to wait between sucessfull batches
+define( 'OZH_TA_NEXT_FAIL', 120 );  // How long to wait after a Fail Whale
 
 global $ozh_ta;
 
@@ -38,7 +37,6 @@ add_action( 'ozh_ta_cron_import', 'ozh_ta_cron_import' );
 add_action( 'init',        'ozh_ta_init' );
 add_action( 'admin_init',  'ozh_ta_load_admin' );
 add_action( 'admin_menu',  'ozh_ta_add_page');
-add_filter( 'the_content', 'ozh_ta_add_tags' );
 
 // Import tweets from cron job
 function ozh_ta_cron_import() {
@@ -105,23 +103,7 @@ function ozh_ta_plugin_row_meta( $plugin_meta, $plugin_file ) {
 
 // Add plugin menu
 function ozh_ta_add_page() {
-	ozh_ta_debug( 'add_page' );
 	$page = add_options_page( 'Ozh\' Tweet Archiver', 'Tweet Archiver', 'manage_options', 'ozh_ta', 'ozh_ta_do_page' );
-}
-
-// Add post tags if applicable
-// This is hooked into filter 'the_content'
-function ozh_ta_add_tags( $text ) {
-	global $ozh_ta, $id;
-    
-    // is there any #hashtag here ?
-    if( $ozh_ta['add_hash_as_tags'] == 'yes' && $hashtags = get_post_meta( $id, 'ozh_ta_has_hashtags', true ) ) {
-        ozh_ta_debug( "Tagging post $id with ".implode( ', ', $hashtags ) );
-        wp_set_post_tags( $id, implode( ', ', $hashtags ) );
-        delete_post_meta( $id, 'ozh_ta_has_hashtags' );
-    }
-	
-	return apply_filters( 'ozh_ta_post_linkify', $text );
 }
 
 // Get link for a given tag.
@@ -213,15 +195,31 @@ function ozh_ta_seconds_to_words( $seconds ) {
     return trim( $ret );
 }
 
+// Is it debug mode ? Return bool
+function ozh_ta_is_debug() {
+    static $is_debug = null;
+    
+    if( $is_debug === null ) {
+        $is_debug = file_exists( dirname(__FILE__).'/debug.log' );
+    }
+    
+    return $is_debug;
+}
+
 // Log debug message in flat file
 function ozh_ta_debug( $in ) {
-	if( !defined( 'OZH_TA_DEBUG' ) || !OZH_TA_DEBUG )
-		return;
+    static $log_debug = null;
+    
+    if( $log_debug === null )   
+        $log_debug = ozh_ta_is_debug();
+        
+    if( $log_debug === false )
+        return;
 		
 	if( is_array( $in ) or is_object( $in ) )
 		$in = print_r( $in, true );
 	
-	$ts = date('r');
+	$ts = date('Y-m-d H:i:s');
 	
 	error_log( "$ts: $in\n", 3, dirname(__FILE__).'/debug.log' );
 }
@@ -257,3 +255,15 @@ function ozh_ta_get_token( $consumer_key, $consumer_secret ) {
 
     return $return;
 }
+
+
+// Schedule next twitter archiving
+function ozh_ta_schedule_next( $delay = 30 ) {
+	wp_clear_scheduled_hook( 'ozh_ta_cron_import' );
+	ozh_ta_debug( "Schedule cleared" );
+	if( $delay ) {
+		wp_schedule_single_event( time()+$delay, 'ozh_ta_cron_import' );
+		ozh_ta_debug( "Schedule next in $delay" );
+	}
+}
+
