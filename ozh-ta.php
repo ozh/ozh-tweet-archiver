@@ -37,6 +37,7 @@ add_action( 'ozh_ta_cron_import', 'ozh_ta_cron_import' );
 add_action( 'init',        'ozh_ta_init' );
 add_action( 'admin_init',  'ozh_ta_load_admin' );
 add_action( 'admin_menu',  'ozh_ta_add_page');
+add_filter( 'the_content', 'ozh_ta_convert_old_posts' );
 
 // Import tweets from cron job
 function ozh_ta_cron_import() {
@@ -48,17 +49,13 @@ function ozh_ta_cron_import() {
 function ozh_ta_init() {
 	global $ozh_ta;
 	
+	ozh_ta_require( 'utils.php' );
+	ozh_ta_require( 'template_tags.php' );
+
 	if( !$ozh_ta = get_option( 'ozh_ta' ) )
 		$ozh_ta = ozh_ta_defaults();
-
-	ozh_ta_require( 'template_tags.php' );
 	
 	ozh_ta_debug( 'Plugin init' );
-}
-
-// Require files as needed
-function ozh_ta_require( $file ) {
-	require_once( dirname(__FILE__).'/inc/'.$file );
 }
 
 // Admin init
@@ -72,12 +69,6 @@ function ozh_ta_load_admin() {
     }
 	add_filter( 'plugin_row_meta', 'ozh_ta_plugin_row_meta', 10, 2 );
 	add_filter( 'plugin_action_links_'.plugin_basename( __FILE__ ), 'ozh_ta_plugin_actions' );
-}
-
-// Is the plugin configured? Return bool
-function ozh_ta_is_configured() {
-    global $ozh_ta;
-    return ( isset( $ozh_ta['access_token'] ) && $ozh_ta['access_token'] && isset( $ozh_ta['screen_name'] ) && $ozh_ta['screen_name'] );
 }
 
 // Plugin action links
@@ -153,117 +144,75 @@ function ozh_ta_defaults() {
 	);
 }
 
-// Delay before next update
-function ozh_ta_next_update_in( $human_time = true ) {
-	global $ozh_ta;
-	
-	$next = wp_next_scheduled( 'ozh_ta_cron_import' );
-	$freq = $ozh_ta['refresh_interval'];
-	$now = time();
-	if( $next < $now )
-		$next = $now + $freq - 1;
-	
-	if( $human_time )
-		return ozh_ta_seconds_to_words( $next - $now );
-	else 
-		return ($next - $now );
+// Require files as needed
+function ozh_ta_require( $file ) {
+	require_once( dirname(__FILE__).'/inc/'.$file );
 }
 
-
-// Transform 132456 seconds into x hours y minutes z seconds
-function ozh_ta_seconds_to_words( $seconds ) {
-    $ret = "";
-
-    $hours = intval( intval($seconds) / 3600 );
-    if( $hours > 0 ) {
-        $ret .= "$hours hour";
-		$ret .= ( $hours > 1 ? 's ' : ' ' );
-    }
-
-    $minutes = intval( $seconds / 60 ) % 60;
-    if( $minutes > 0 ) {
-        $ret .= "$minutes minute";
-		$ret .= ( $minutes > 1 ? 's ' : ' ' );
-    }
-  
-    $seconds = $seconds % 60;
-    if( $seconds > 0 ) {
-		$ret .= "$seconds second";
-		$ret .= ( $seconds > 1 ? 's ' : ' ' );
-	}
-
-    return trim( $ret );
-}
-
-// Is it debug mode ? Return bool
-function ozh_ta_is_debug() {
-    static $is_debug = null;
+// Convert links, @mentions and #hashtags from older posts
+function ozh_ta_convert_old_posts( $text ) {
+    global $ozh_ta;
     
-    if( $is_debug === null ) {
-        $is_debug = file_exists( dirname(__FILE__).'/debug.log' );
+    // Get unformatted title: this will be the unmodified original tweet -- pure text, no HTML
+    global $post;
+    $title = $post->post_title;
+    $ID    = $post->ID;
+    
+    // Keep track of whether the post has been formatted
+    $updated = false;
+
+    // Tweet has links that have not been converted
+    if( ( strpos( $title, 'http://' ) !== false OR strpos( $title, 'https://' ) !== false ) && strpos( $text, 'class="link' ) === false ) {
+        preg_match_all( '!https?://\S*!', $title, $matches );
+        foreach( $matches[0] as $url ) {
+            
+            // t.co URL ?
+            if( $ozh_ta['un_tco'] == 'yes' && strpos( $url, 'http://t.co/' ) === 0 ) {
+                $expanded_url = ozh_ta_expand_tco_url( $url );
+                $tco_url      = $url;
+            } else {
+                $expanded_url = $tco_url = $url;
+            }
+            $display_url  = ozh_ta_trim_long_string( preg_replace( '/https?:\/\//', '', $expanded_url ) );
+            
+            $text = ozh_ta_convert_links( $text, $expanded_url, $display_url, $tco_url );
+        }
+        $updated = true;
     }
     
-    return $is_debug;
-}
-
-// Log debug message in flat file
-function ozh_ta_debug( $in ) {
-    static $log_debug = null;
-    
-    if( $log_debug === null )   
-        $log_debug = ozh_ta_is_debug();
-        
-    if( $log_debug === false )
-        return;
-		
-	if( is_array( $in ) or is_object( $in ) )
-		$in = print_r( $in, true );
-	
-	$ts = date('Y-m-d H:i:s');
-	
-	error_log( "$ts: $in\n", 3, dirname(__FILE__).'/debug.log' );
-}
-
-// Return OAuth2 token, or false
-function ozh_ta_get_token( $consumer_key, $consumer_secret ) {
-    $bearer_token_credential = $consumer_key . ':' . $consumer_secret;
-    $credentials = base64_encode( $bearer_token_credential );
-
-    $args = array(
-        'method'      => 'POST',
-        'httpversion' => '1.1',
-        'blocking'    => true,
-        'body'        => array( 'grant_type' => 'client_credentials' ),
-        'headers'     => array( 
-            'Authorization' => 'Basic ' . $credentials,
-            'Content-Type'  => 'application/x-www-form-urlencoded;charset=UTF-8',
-        ),
-    );
-
-    add_filter( 'https_ssl_verify', '__return_false' );
-    $response = wp_remote_post( 'https://api.twitter.com/oauth2/token', $args );
-
-    $keys = json_decode($response['body']);
-    
-    if( $keys && isset( $keys->access_token ) ) {
-        $return = $keys->access_token;
-    } else {
-        $return = false;
+    // Tweet has @mentions that have not been converted
+    if( strpos( $title, '@' ) !== false && strpos( $text, 'class="username' ) === false ) {
+        preg_match_all( '/\B@(\w+)/', $title, $matches );
+        if( isset( $matches[1] ) ) {
+            foreach( $matches[1] as $mention ) {
+                $text = ozh_ta_convert_mentions( $text, $mention, $mention );
+            }
+        }
+        $updated = true;
     }
     
-    ozh_ta_debug( 'Getting token: ' . $return );
-
-    return $return;
+    // Tweet has #hashtags that have not been converted
+    if( strpos( $title, '#' ) !== false && strpos( $text, 'class="hashtag' ) === false ) {
+        preg_match_all( '/\B#(\w*[a-zA-Z-]+\w*)/', $text, $matches );
+        if( isset( $matches[1] ) ) {
+            foreach( $matches[1] as $tag ) {
+                $text = ozh_ta_convert_hashtags( $text, $tag );
+            }
+            
+            if( $ozh_ta['add_hash_as_tags'] == 'yes' ) {
+                wp_set_post_tags( $ID, implode( ', ', $matches[1] ) );
+            }
+        }
+        $updated = true;
+    }
+    
+    // Did we alter the post? Update it, then
+    if( $updated ) {
+        $post->post_content = $text;
+        wp_update_post( $post );
+    }
+    
+    return $text;
 }
 
-
-// Schedule next twitter archiving
-function ozh_ta_schedule_next( $delay = 30 ) {
-	wp_clear_scheduled_hook( 'ozh_ta_cron_import' );
-	ozh_ta_debug( "Schedule cleared" );
-	if( $delay ) {
-		wp_schedule_single_event( time()+$delay, 'ozh_ta_cron_import' );
-		ozh_ta_debug( "Schedule next in $delay" );
-	}
-}
 

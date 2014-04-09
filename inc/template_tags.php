@@ -136,21 +136,21 @@ add_action( 'ozh_ta_total_links', 'ozh_ta_total_links', 10, 0 );
 function ozh_ta_link_ratio( $echo = true ) {
 	$links = ozh_ta_get_total( 'link_count' );
 	$total = ozh_ta_get_total( 'total_archived' );
-	$what = (string)( intval( 1000 * $links / $total ) / 10 ).'%';
+	$ratio = $total > 0 ? (string)( intval( 1000 * $links / $total ) / 10 ).'%' : '' ;
 	if( $echo )
-		echo $what;
-	return $what;
+		echo $ratio;
+	return $ratio;
 }
 add_action( 'ozh_ta_link_ratio', 'ozh_ta_link_ratio', 10, 0 );
 
 // Template tag: ratio of tweets that are replies (in tweets archived)
 function ozh_ta_reply_ratio( $echo = true ) {
 	$replies = ozh_ta_get_total( 'replies' );
-	$total = ozh_ta_get_total( 'total_archived' );
-	$what = (string)( intval( 1000 * $replies['total'] / $total ) / 10 ).'%';
+	$total   = ozh_ta_get_total( 'total_archived' );
+	$ratio   = $total > 0 ? (string)( intval( 1000 * $replies['total'] / $total ) / 10 ).'%' : '';
 	if( $echo )
-		echo $what;
-	return $what;
+		echo $ratio;
+	return $ratio;
 }
 add_action( 'ozh_ta_reply_ratio', 'ozh_ta_reply_ratio', 10, 0 );
 
@@ -188,15 +188,13 @@ add_action( 'ozh_ta_total_archived', 'ozh_ta_total_archived', 10, 0 );
 // Get total number of something
 function ozh_ta_get_total( $what ) {
 	global $ozh_ta;
-	return $ozh_ta['twitter_stats'][$what];
+	return isset( $ozh_ta['twitter_stats'][$what] ) ? $ozh_ta['twitter_stats'][$what] : '';
 }
 
 // Get meta tag
 function ozh_ta_get_meta( $what = 'source' ) {
 	global $id;
 	return get_post_meta( $id, 'ozh_ta_'.$what, true );
-	echo "<pre>";var_dump( debug_backtrace() );echo "</pre>";
-	return 'bleh';
 }
 
 // Slight hacked monthly archives

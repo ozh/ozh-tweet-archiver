@@ -83,6 +83,11 @@ function ozh_ta_get_tweets( $echo = false ) {
 	// Tweets found, let's archive
 	if ( $tweets ) {
     
+        if( ozh_ta_is_debug() ) {
+            $overall = new ozh_ta_query_count(); 
+        }
+
+        $ozh_ta['_last_tweet_id_inserted'] = 0;
         $results = ozh_ta_insert_tweets( $tweets, true );
 		// array( inserted, skipped, tagged, num_tags, last_tweet_id_inserted, (array)$user );
         
@@ -93,14 +98,13 @@ function ozh_ta_get_tweets( $echo = false ) {
 		update_option( 'ozh_ta', $ozh_ta );
 
 		ozh_ta_debug( "Twitter OK, imported {$results['inserted']}, skipped {$results['skipped']}, tagged {$results['tagged']} with {$results['num_tags']} tags, next in ".OZH_TA_NEXT_SUCCESS );
+        if( ozh_ta_is_debug() ) {
+            ozh_ta_debug( 'Total queries: ' . $overall->stop() );            
+        }
 
 		// Context: option page
 		if( $echo ) {
 			echo "<p>Tweets inserted: <strong>{$results[ 'inserted' ]}</strong></p>";
-            if( ozh_ta_is_debug() ) {
-                global $wpdb;
-                ozh_ta_debug( "Queries: " . $wpdb->num_queries );            
-            }
 			$url = wp_nonce_url( admin_url( 'options-general.php?page=ozh_ta&action=import_all&time='.time() ), 'ozh_ta-import_all' );
 			ozh_ta_reload( $url, OZH_TA_NEXT_SUCCESS );
 		
@@ -123,7 +127,7 @@ function ozh_ta_get_tweets( $echo = false ) {
 		$ozh_ta['last_tweet_id_inserted'] = max( $ozh_ta['last_tweet_id_inserted'], $ozh_ta['_last_tweet_id_inserted'] );
 		unset( $ozh_ta['_last_tweet_id_inserted'] );
 		$ozh_ta['api_page'] = 1;
-		$ozh_ta['twitter_stats']['link_count'] = $wpdb->get_var( "SELECT COUNT(ID) FROM `$wpdb->posts` WHERE `post_content` LIKE '%http://%'" );
+		$ozh_ta['twitter_stats']['link_count'] = $wpdb->get_var( "SELECT COUNT(ID) FROM `$wpdb->posts` WHERE `post_type` = 'post' AND `post_status` = 'publish' AND `post_content` LIKE '%class=\"link%'" );
 		$ozh_ta['twitter_stats']['replies'] = $wpdb->get_row( "SELECT COUNT( DISTINCT `meta_value`) as unique_names, COUNT( `meta_value`) as total FROM `$wpdb->postmeta` WHERE `meta_key` = 'ozh_ta_reply_to_name'", ARRAY_A );
 		$ozh_ta['twitter_stats']['total_archived'] = $wpdb->get_var( "SELECT COUNT(`meta_key`) FROM `$wpdb->postmeta` WHERE `meta_key` = 'ozh_ta_id'" );
 		update_option( 'ozh_ta', $ozh_ta );
@@ -146,75 +150,37 @@ function ozh_ta_linkify_tweet( $tweet ) {
     $text = $tweet->text;
     
 	// Linkify twitter names if applicable
-    if( $mentions = $tweet->entities->user_mentions ) {
+    if( isset( $tweet->entities->user_mentions ) && $mentions = $tweet->entities->user_mentions ) {
         foreach( $mentions as $mention ) {
             $screen_name = $mention->screen_name;
             $name        = $mention->name;
             
-            // Convert to link or to span
-            if( $ozh_ta['link_usernames'] == 'yes' ) {
-                $replace = sprintf( '<span class="username username_linked">@<a href="https://twitter.com/%s" title="%s">%s</a></span>',
-                                    $screen_name, esc_attr( $name ), $screen_name );
-            } else {
-                $replace = sprintf( '<span title="%s" class="username username_unlinked">@%s</a>',
-                                    esc_attr( $name ), $screen_name );
-            }
-            
-            $text = preg_replace( '/\@' . $screen_name . '/', $replace, $text, 1 );
+            $text = ozh_ta_convert_mentions( $text, $screen_name, $name );
         }
     }
     
 	// un-t.co links if applicable
-    if( $urls = $tweet->entities->urls ) {
+    if( isset( $tweet->entities->urls ) && $urls = $tweet->entities->urls ) {
         foreach( $urls as $url ) {
             $expanded_url = $url->expanded_url;
             $display_url  = $url->display_url;
             $tco_url      = $url->url;
             
-            // Convert links
-            if( $ozh_ta['un_tco'] == 'yes' ) {
-                $replace = sprintf( '<a href="%s" title="%s" class="link link_untco">%s</a>',
-                                    $expanded_url, $expanded_url, $display_url );
-            } else {
-                $replace = sprintf( '<a href="%s" class="link link_tco">%s</a>',
-                                    $tco_url, $tco_url );
-            }
-            
-            $text = preg_replace( '!' . $tco_url . '!', $replace, $text, 1 ); // using ! instead of / because URLs contain / already ;P
+            $text = ozh_ta_convert_links( $text, $expanded_url, $display_url, $tco_url );
         }
     }
     
 	// hashtag links if applicable
-    if( $hashes = $tweet->entities->hashtags ) {
+    if( isset( $tweet->entities->hashtags ) && $hashes = $tweet->entities->hashtags ) {
         foreach( $hashes as $hash ) {
-            $hash_text         = $hash->text;
+            $hash_text = $hash->text;
             
-            // Convert hashtags
-            switch( $ozh_ta['link_hashtags'] ) {
-            
-                case 'twitter':
-                $replace = sprintf( '<span class="hashtag hashtag_twitter">#<a href="%s">%s</a></span>',
-                                    'https://twitter.com/search?q=%23' . $hash_text, $hash_text );
-                break;    
-            
-                case 'local':
-                $replace = sprintf( '<span class="hashtag hashtag_local">#<a href="%s">%s</a>',
-                                    ozh_ta_get_tag_link( $hash_text ), $hash_text );
-                break;    
-            
-                case 'no':
-                $replace = sprintf( '<span class="hashtag hashtag_no">%s</span>',
-                                    '#' . $hash_text );
-                break;    
-            
-            }
-            
-            $text = preg_replace( '/\#' . $hash_text . '/', $replace, $text, 1 );
+            $text = ozh_ta_convert_hashtags( $text, $hash_text );
         }
     }
     
 	// embed images if applicable. This operation shall be the last one
-    if( $medias = $tweet->entities->media ) {
+    if( isset( $tweet->entities->media ) && $medias = $tweet->entities->media ) {
         foreach( $medias as $media ) {
             $media_url    = $media->media_url_https;
             $display_url  = $media->display_url;
@@ -259,14 +225,13 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 	$user = array();
     
     if( ozh_ta_is_debug() ) {
-        global $wpdb;
-        $queries_before_insert = $wpdb->num_queries;
+        $num_sql_batch = new ozh_ta_query_count(); 
     }
 		
 	foreach ( (array)$tweets as $tweet ) {
 		
         if( ozh_ta_is_debug() ) {
-            $queries_before_post = $wpdb->num_queries;
+            $num_sql_post = new ozh_ta_query_count(); 
         }
 
         // Current tweet
@@ -321,27 +286,25 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 			if( $reply_to_tweet )
 				add_post_meta( $post_id, 'ozh_ta_reply_to_tweet', $reply_to_tweet );
 
-            ozh_ta_debug( "Inserted $post_id (tweet id: $tid, tweet: ". substr($text, 0, 100) ."...)" );
+            ozh_ta_debug( " Inserted #$post_id (tweet id: $tid, tweet: ". ozh_ta_trim_long_string( $text, 100 ) . ')' );
 		
             if( ozh_ta_is_debug() ) {
-                $queries_after_post = $wpdb->num_queries;
-                ozh_ta_debug( "  Import cost: " . ( $queries_after_post - $queries_before_post ) . "( $queries_before_post -> $queries_after_post )" );
+                ozh_ta_debug( '  Import query cost: ' . $num_sql_post->stop() );
             }
 
             // Tag post if applicable
-            if( $has_hashtags ) {
+            if( $has_hashtags && $ozh_ta['add_hash_as_tags'] == 'yes' ) {
                 $hashtags  = ozh_ta_get_hashtags( $tweet );
                 $num_tags += count( $hashtags );
                 $hashtags  = implode( ', ', $hashtags );
-                ozh_ta_debug( "Tagging post $post_id with " . $hashtags );
+                ozh_ta_debug( "  Tagging post $post_id with " . $hashtags );
                 $tagged++;
                 if( ozh_ta_is_debug() ) {
-                    $queries_before_tag = $wpdb->num_queries;
+                    $num_sql_tag = new ozh_ta_query_count();
                 }
                 wp_set_post_tags( $post_id, $hashtags );
                 if( ozh_ta_is_debug() ) {
-                    $queries_after_tag = $wpdb->num_queries;
-                    ozh_ta_debug( "  Tagging cost: " . ( $queries_after_tag - $queries_before_tag ) . "( $queries_before_tag -> $queries_after_tag )" );
+                    ozh_ta_debug( '   Tagging query cost: ' . $num_sql_tag->stop() );
                 }
                 
             }
@@ -351,14 +314,13 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 			
 		} else {
 			// This tweet has already been imported ?!
-			ozh_ta_debug( "Skipping tweet $tid, already imported?!" );
+			ozh_ta_debug( " Skipping tweet $tid, already imported?!" );
             $skipped++;
 		}
 	}
 
     if( ozh_ta_is_debug() ) {
-        $queries_after_insert = $wpdb->num_queries;
-        ozh_ta_debug( "Batch import cost: " . ( $queries_after_insert - $queries_before_insert ) . "( $queries_before_insert -> $queries_after_insert )" );
+        ozh_ta_debug( 'Batch import query cost: ' . $num_sql_batch->stop() );
     }
 
     return array(
@@ -378,4 +340,35 @@ function ozh_ta_get_hashtags( $tweet ) {
         $list[] = $tag->text;
     }
     return $list;
+}
+
+
+/**
+ * Count MySQL queries between two events
+ *
+ * Usage:
+ * $context = new ozh_ta_query_count();
+ * // ... do some stuff in that context
+ * var_dump( $context->stop() ); // int 4
+ */
+class ozh_ta_query_count {
+    
+    private $start;
+    private $stop;
+    
+    public function __construct() {
+        $this->start();
+    }
+    
+    private function start() {
+        global $wpdb;
+        $this->start = $wpdb->num_queries;
+    }
+    
+    public function stop() {
+        global $wpdb;
+        $this->stop = $wpdb->num_queries;
+        return ($this->stop - $this->start );
+    }
+
 }
