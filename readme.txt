@@ -16,6 +16,8 @@ Plugin's page: [Ozh' Tweet Archiver](http://planetozh.com/blog/my-projects/ozh-t
 
 Live example: [Ozh' Tweets](http://planetozh.com/tweets/ "Ozh' Tweets")
 
+Development: on [Github](https://github.com/ozh/ozh-tweet-archiver)
+
 == Screenshots ==
 
 1. Config page
