@@ -8,16 +8,17 @@ Author: Ozh
 Author URI: http://ozh.org/
 */
 
-/* History
-   1.0     initial release
-   1.0.1   fix notice when no tweet found
-   2.0     change to Twitter API v1.1, with help from @EHER
-           allow embedding of images
-           allow unwrapping t.co links
-*/
+/**
+ * History
+ * 1.0     initial release
+ * 1.0.1   fix notice when no tweet found
+ * 2.0     change to Twitter API v1.1, with help from @EHER
+ *         allow embedding of images
+ *         allow unwrapping t.co links
+ */
 
 /*
- Known bug:
+ FIXME Known bug:
  The plugin will eat backslashes. A simple fix would be to replace \ with &#92; prior to inserting, but I haven't checked
  all potential unwanted side effects yet.
 */
@@ -25,8 +26,8 @@ Author URI: http://ozh.org/
 // Constants that should work for everyone
 define( 'OZH_TA_API', 'https://api.twitter.com/1.1/statuses/user_timeline.json' ); // Twitter API url (1.1 version)
 define( 'OZH_TA_BATCH', 15 );	    // How many tweets to import at most. Take it easy on shared hosting.
-define( 'OZH_TA_NEXT_SUCCESS', 5 ); // How long to wait between sucessfull batches
-define( 'OZH_TA_NEXT_FAIL', 120 );  // How long to wait after a Fail Whale
+define( 'OZH_TA_NEXT_SUCCESS', 5 ); // How long to wait between sucessfull batches (in seconds)
+define( 'OZH_TA_NEXT_FAIL', 120 );  // How long to wait after a Fail Whale (in seconds)
 
 global $ozh_ta;
 
@@ -42,6 +43,7 @@ add_filter( 'the_content', 'ozh_ta_convert_old_posts' );
 // Import tweets from cron job
 function ozh_ta_cron_import() {
 	ozh_ta_require( 'import.php' );
+    ozh_ta_debug( 'Starting cron job' );
 	ozh_ta_get_tweets();
 }
 
@@ -51,9 +53,13 @@ function ozh_ta_init() {
 	
 	ozh_ta_require( 'utils.php' );
 	ozh_ta_require( 'template_tags.php' );
-
-	if( !$ozh_ta = get_option( 'ozh_ta' ) )
-		$ozh_ta = ozh_ta_defaults();
+    
+    $ozh_ta = get_option( 'ozh_ta' );
+    if( $ozh_ta == false ) {
+        $ozh_ta = ozh_ta_defaults();
+    } else {
+        array_merge( ozh_ta_defaults(), $ozh_ta );
+    }
 	
 	ozh_ta_debug( 'Plugin init' );
 }
@@ -95,25 +101,6 @@ function ozh_ta_plugin_row_meta( $plugin_meta, $plugin_file ) {
 // Add plugin menu
 function ozh_ta_add_page() {
 	$page = add_options_page( 'Ozh\' Tweet Archiver', 'Tweet Archiver', 'manage_options', 'ozh_ta', 'ozh_ta_do_page' );
-}
-
-// Get link for a given tag.
-// (Note: the tag may or may not actually exist)
-function ozh_ta_get_tag_link( $tag ) {
-	global $wp_rewrite;
-	$link = $wp_rewrite->get_tag_permastruct();
-	
-	$tag = sanitize_title_with_dashes( $tag );
-
-	if( empty( $link ) ) {
-		// site.com/?tag=bleh
-		$link = trailingslashit( home_url() ) . '?tag=' . $tag;
-	} else {
-		// site.com/tag/bleh/
-		$link = str_replace( '%tag%', $tag, $link );
-		$link = home_url( user_trailingslashit( $link, 'category' ) );
-	}
-	return apply_filters( 'ozh_ta_get_tag_link', $link );
 }
 
 // Default plugin options

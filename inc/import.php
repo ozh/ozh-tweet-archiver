@@ -1,12 +1,15 @@
 <?php
 // Functions related to fetching & importing tweets
 
-// Poll Twitter API and get tweets
+/**
+ * Poll Twitter API and get tweets
+ *
+ * @param  bool $echo  True to output results and redirect page (ie called from option page)
+ * @return bool        false if error while polling Twitter, true otherwise
+ */
 function ozh_ta_get_tweets( $echo = false ) {
 	global $ozh_ta;
 	
-	ozh_ta_schedule_next( 0 ); // clear scheduling
-    
     if( !ozh_ta_is_configured() ) {
 		ozh_ta_debug( 'Config incomplete, cannot import tweets' );
         return false;
@@ -30,10 +33,10 @@ function ozh_ta_get_tweets( $echo = false ) {
 		'timeout' => 10
 	) );
     
-	$tweets = wp_remote_retrieve_body( $response );
-	$ratelimit = wp_remote_retrieve_header( $response, 'x-rate-limit-limit' );
+	$tweets      = wp_remote_retrieve_body( $response );
+	$ratelimit   = wp_remote_retrieve_header( $response, 'x-rate-limit-limit' );
 	$ratelimit_r = wp_remote_retrieve_header( $response, 'x-rate-limit-remaining' );
-    $status = wp_remote_retrieve_response_code( $response );
+    $status      = wp_remote_retrieve_response_code( $response );
 	ozh_ta_debug( "API status: $status" );
 	ozh_ta_debug( "API rate: $ratelimit_r/$ratelimit" );
 	
@@ -79,6 +82,7 @@ function ozh_ta_get_tweets( $echo = false ) {
     // This isn't needed anymore since, smartly, Twitter's API returns both an id and an id_str. Nice, Twitter :)
 
 	$tweets = array_reverse( (array)json_decode( $tweets ) );
+    $ozh_ta['_last_tweet_id_inserted'] = 0;
     
 	// Tweets found, let's archive
 	if ( $tweets ) {
@@ -87,7 +91,6 @@ function ozh_ta_get_tweets( $echo = false ) {
             $overall = new ozh_ta_query_count(); 
         }
 
-        $ozh_ta['_last_tweet_id_inserted'] = 0;
         $results = ozh_ta_insert_tweets( $tweets, true );
 		// array( inserted, skipped, tagged, num_tags, last_tweet_id_inserted, (array)$user );
         
@@ -143,7 +146,12 @@ function ozh_ta_get_tweets( $echo = false ) {
 	return true;
 }
 
-// Linkify @usernames, #hashtags and t.co links, then return text 
+/**
+ * Linkify @usernames, #hashtags and t.co links, then return text 
+ *
+ * @param  object $tweet  a Tweet object (json_decoded result of https://dev.twitter.com/docs/platform-objects/tweets)
+ * @return string         formatted tweet
+ */
 function ozh_ta_linkify_tweet( $tweet ) {
     global $ozh_ta;
     
@@ -213,8 +221,13 @@ function ozh_ta_linkify_tweet( $tweet ) {
     return $text;
 }
 
-// Insert tweets as posts
-function ozh_ta_insert_tweets( $tweets, $display = false ) {
+/**
+ * Insert tweets as posts
+ *
+ * @param array $tweets   Array of tweet objects
+ * @return array          Array of stats about the insertion
+ */
+function ozh_ta_insert_tweets( $tweets ) {
 
     // Flag as importing : this will cut some queries in the process, regarding (ping|track)backs
     if( !defined( 'WP_IMPORTING' ) )
@@ -333,7 +346,12 @@ function ozh_ta_insert_tweets( $tweets, $display = false ) {
 	);
 }
 
-// Return list of hashtags for a given tweet
+/**
+ * Return list of hashtags for a given tweet
+ *
+ * @param  object $tweet  a Tweet object (json_decoded result of https://dev.twitter.com/docs/platform-objects/tweets)
+ * @return array          Array of hashtags
+ */
 function ozh_ta_get_hashtags( $tweet ) {
     $list = array();
     foreach( $tweet->entities->hashtags as $tag ) {

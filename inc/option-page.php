@@ -31,7 +31,6 @@ function ozh_ta_do_page_scheduled() {
 	
 	if( isset( $_GET['action'] ) && $_GET['action'] == 'cancel_auto' ) {
 		check_admin_referer( 'ozh_ta-cancel_auto' );
-		ozh_ta_require( 'import.php' );
 		ozh_ta_schedule_next( 0 );
 		return;
 	}
@@ -80,6 +79,7 @@ function ozh_ta_do_page_manual() {
 		
 		// Import the goodness
 		ozh_ta_require( 'import.php' );
+        ozh_ta_schedule_next( 0 ); // clear any scheduling : it'll be rescheduled after all tweets have been imported
 		ozh_ta_get_tweets( true );
 		
 	}

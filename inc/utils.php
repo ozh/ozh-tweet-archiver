@@ -1,6 +1,12 @@
 <?php
 
-// Return OAuth2 token, or false
+/**
+ * Return OAuth2 token, or falseShort description
+ *
+ * @param  string $consumer_key     Consumer key
+ * @param  string $consumer_secret  Consumer secret
+ * @return mixed                    false on error, OAuth token string on success
+ */
 function ozh_ta_get_token( $consumer_key, $consumer_secret ) {
     $bearer_token_credential = $consumer_key . ':' . $consumer_secret;
     $credentials = base64_encode( $bearer_token_credential );
@@ -15,8 +21,13 @@ function ozh_ta_get_token( $consumer_key, $consumer_secret ) {
             'Content-Type'  => 'application/x-www-form-urlencoded;charset=UTF-8',
         ),
     );
-
-    // add_filter( 'https_ssl_verify', '__return_false' );
+    
+    do_action( 'pre_ozh_ta_get_token' );
+    /**
+     * This action for plugins to be able to alter HTTP request option prior to polling the API
+     * For instance, hook on this action to add:
+     * add_filter( 'https_ssl_verify', '__return_false' );
+     */
     $response = wp_remote_post( 'https://api.twitter.com/oauth2/token', $args );
 
     $keys = json_decode($response['body']);
@@ -32,7 +43,11 @@ function ozh_ta_get_token( $consumer_key, $consumer_secret ) {
     return $return;
 }
 
-// Is it debug mode ? Return bool
+/**
+ * Is it debug mode ? Return bool
+ *
+ * @return bool  true if we're in debug mode, false otherwise
+ */
 function ozh_ta_is_debug() {
     static $is_debug = null;
     
@@ -43,7 +58,11 @@ function ozh_ta_is_debug() {
     return $is_debug;
 }
 
-// Log debug message in flat file
+/**
+ * Log debug message in flat file if applicable
+ *
+ * @param mixed $in  String, array or message to log if we're in debug mode
+ */
 function ozh_ta_debug( $in ) {
     static $log_debug = null;
     
@@ -61,13 +80,22 @@ function ozh_ta_debug( $in ) {
 	error_log( "$ts: $in\n", 3, dirname( dirname(__FILE__) ).'/debug.log' );
 }
 
-// Is the plugin configured? Return bool
+/**
+ * Is the plugin configured? Return bool
+ *
+ * @return bool  true if configured, false otherwise
+ */
 function ozh_ta_is_configured() {
     global $ozh_ta;
     return ( isset( $ozh_ta['access_token'] ) && $ozh_ta['access_token'] && isset( $ozh_ta['screen_name'] ) && $ozh_ta['screen_name'] );
 }
 
-// Delay before next update
+/**
+ * Delay before next update
+ *
+ * @param  bool $human_time  true to get human readable interval in hours/min/sec, false to get a number of seconds
+ * @return mixed             string or integer
+ */
 function ozh_ta_next_update_in( $human_time = true ) {
 	global $ozh_ta;
 	
@@ -83,7 +111,12 @@ function ozh_ta_next_update_in( $human_time = true ) {
 		return ($next - $now );
 }
 
-// Transform 132456 seconds into x hours y minutes z seconds
+/**
+ * Transform 132456 seconds into x hours y minutes z seconds
+ *
+ * @param  interger $seconds  Interval in seconds to convert
+ * @return string             Human readable interval
+ */
 function ozh_ta_seconds_to_words( $seconds ) {
     $ret = "";
 
@@ -108,7 +141,11 @@ function ozh_ta_seconds_to_words( $seconds ) {
     return trim( $ret );
 }
 
-// Schedule next twitter archiving
+/**
+ * Schedule next twitter archiving
+ *
+ * @param int $delay  Number of second before next archiving
+ */
 function ozh_ta_schedule_next( $delay = 30 ) {
 	wp_clear_scheduled_hook( 'ozh_ta_cron_import' );
 	ozh_ta_debug( "Schedule cleared" );
@@ -118,7 +155,13 @@ function ozh_ta_schedule_next( $delay = 30 ) {
 	}
 }
 
-// Convert hashtags: replace #blah with applicable HTML
+/**
+ * Convert hashtags: replace #blah with applicable HTML
+ *
+ * @param  string $text     Tweet text ("I am very nice #bleh")
+ * @param  string $hashtag  Hashtag text ("bleh")
+ * @return string           Formatted HTML
+ */
 function ozh_ta_convert_hashtags( $text, $hashtag ) {
     global $ozh_ta;
     
@@ -146,8 +189,15 @@ function ozh_ta_convert_hashtags( $text, $hashtag ) {
     return $text;
 }
 
-
-// Convert links
+/**
+ * Convert links
+ *
+ * @param  string $text          Tweet text ("Wow very cool http://t.co/123AbC")
+ * @param  string $expanded_url  Expanded t.co link
+ * @param  string $display_url   Link for display
+ * @param  string $tco_url       Original t.co URL
+ * @return string                Formatted HTML
+ */
 function ozh_ta_convert_links( $text, $expanded_url, $display_url, $tco_url ) {
     global $ozh_ta;
     
@@ -164,7 +214,12 @@ function ozh_ta_convert_links( $text, $expanded_url, $display_url, $tco_url ) {
     return $text;
 }
 
-// Manually expand a t.co URL
+/**
+ * Manually expand a t.co URL
+ *
+ * @param  string $url  URL to expand ("http://t.co/blah123")
+ * @return string       Expanded URL ("http://some-long-url.com")
+ */
 function ozh_ta_expand_tco_url( $url ) {
     if( strpos( $url, 'http://t.co/' ) !== 0 )
         return $url;
@@ -173,7 +228,14 @@ function ozh_ta_expand_tco_url( $url ) {
     return isset( $head['headers']['location'] ) ? $head['headers']['location'] : $url;
 }
 
-// Convert @mentions to link or to span
+/**
+ * Convert @mentions to link or to span
+ *
+ * @param  string $text         Tweet text ("Wow very cool http://t.co/123AbC")
+ * @param  string $screen_name  Screen name ("@ozh")
+ * @param  string $name         Real name ("Ozh RICHARD")
+ * @return string               Formatted HTML
+ */
 function ozh_ta_convert_mentions( $text, $screen_name, $name ) {
     global $ozh_ta;
     
@@ -190,10 +252,42 @@ function ozh_ta_convert_mentions( $text, $screen_name, $name ) {
     return $text;
 }
 
-// Trim long strings
+/**
+ * Trim long strings
+ *
+ * @param  string $text  Text to trim if longer than threshold
+ * @param  int $len      Threshold
+ * @return string        Trimmed text
+ */
 function ozh_ta_trim_long_string( $text, $len = 30 ) {
     if( strlen( $text ) > $len )
         $text = substr( $text, 0, $len ) . '...';
     return $text;
+}
+
+/**
+ * Get link for a given tag.
+ *
+ * (Note: the tag may or may not actually exist)
+ *
+ * @param  string $tag  Tag
+ * @return string       Tag URL
+ */
+// 
+function ozh_ta_get_tag_link( $tag ) {
+	global $wp_rewrite;
+	$link = $wp_rewrite->get_tag_permastruct();
+	
+	$tag = sanitize_title_with_dashes( $tag );
+
+	if( empty( $link ) ) {
+		// site.com/?tag=bleh
+		$link = trailingslashit( home_url() ) . '?tag=' . $tag;
+	} else {
+		// site.com/tag/bleh/
+		$link = str_replace( '%tag%', $tag, $link );
+		$link = home_url( user_trailingslashit( $link, 'category' ) );
+	}
+	return apply_filters( 'ozh_ta_get_tag_link', $link );
 }
 
