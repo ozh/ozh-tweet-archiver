@@ -6,17 +6,22 @@ Tested up to: 9.9
 Stable tag: trunk
 Contributors: ozh
 
-Import and archive your tweets (also convert #hashtags into post tags) 
+Import and archive your tweets with WordPress
 
 == Description ==
 
-Make a fresh WordPress install and archive all your tweets: easier to search than on Twitter, and no more 3200 tweet limit to your history.
+Make a fresh WordPress install and archive all your tweets:
+
+* It's easier to search than on Twitter
+* WordPress is not limited to the most recent 3200 tweets
+* It will automatically expand all those ugly `t.co` links
+* All your #hashtags can be converted to WordPress tags
 
 Plugin's page: [Ozh' Tweet Archiver](http://planetozh.com/blog/my-projects/ozh-tweet-archiver-backup-twitter-with-wordpress/ "Ozh' Tweet Archiver")
 
 Live example: [Ozh' Tweets](http://planetozh.com/tweets/ "Ozh' Tweets")
 
-Development: on [Github](https://github.com/ozh/ozh-tweet-archiver)
+Development: [on Github](https://github.com/ozh/ozh-tweet-archiver)
 
 == Screenshots ==
 
@@ -27,7 +32,7 @@ Development: on [Github](https://github.com/ozh/ozh-tweet-archiver)
 The changelog can be found:
 
 1. In the plugin source itself
-1. Here: http://plugins.trac.wordpress.org/log/ozh-tweet-archiver?verbose=on
+1. Here: https://github.com/ozh/ozh-tweet-archiver
 
 == Installation ==
 
