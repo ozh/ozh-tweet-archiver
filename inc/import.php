@@ -39,6 +39,14 @@ function ozh_ta_get_tweets( $echo = false ) {
     $status      = wp_remote_retrieve_response_code( $response );
 	ozh_ta_debug( "API status: $status" );
 	ozh_ta_debug( "API rate: $ratelimit_r/$ratelimit" );
+    
+    /**
+     * Something to check when Twitter update their API :
+     *
+     * Currently, when you try to retrieve more tweets than available (either you already have fetched 3200, or you
+     * have fetched them all), the API returns no particular error: status 200, just an empty body.
+     * In the future, check if they change this and return a particular message or status code
+     */
 	
 	// Fail Whale or other error
 	if ( !$tweets or $status != 200 ) {
