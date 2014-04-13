@@ -277,7 +277,7 @@ function ozh_ta_trim_long_string( $text, $len = 30 ) {
 function ozh_ta_get_tag_link( $tag ) {
 	global $wp_rewrite;
 	$link = $wp_rewrite->get_tag_permastruct();
-	
+    
 	$tag = sanitize_title_with_dashes( $tag );
 
 	if( empty( $link ) ) {
@@ -285,7 +285,7 @@ function ozh_ta_get_tag_link( $tag ) {
 		$link = trailingslashit( home_url() ) . '?tag=' . $tag;
 	} else {
 		// site.com/tag/bleh/
-		$link = str_replace( '%tag%', $tag, $link );
+		$link = str_replace( '%post_tag%', $tag, $link );
 		$link = home_url( user_trailingslashit( $link, 'category' ) );
 	}
 	return apply_filters( 'ozh_ta_get_tag_link', $link );

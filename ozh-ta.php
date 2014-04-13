@@ -138,6 +138,11 @@ function ozh_ta_require( $file ) {
 
 // Convert links, @mentions and #hashtags from older posts
 function ozh_ta_convert_old_posts( $text ) {
+
+    // Has this post already been converted? Assuming a span means already formatted
+    if( strpos( $text, '<span class="' ) !== false )
+        return $text;
+
     global $ozh_ta;
     
     // Get unformatted title: this will be the unmodified original tweet -- pure text, no HTML
@@ -169,7 +174,7 @@ function ozh_ta_convert_old_posts( $text ) {
     
     // Tweet has @mentions that have not been converted
     if( strpos( $title, '@' ) !== false && strpos( $text, 'class="username' ) === false ) {
-        preg_match_all( '/\B@(\w+)/', $title, $matches );
+        preg_match_all( '/\B@(\w+)/', $title, $matches ); // good news, this won't match joe@site.com
         if( isset( $matches[1] ) ) {
             foreach( $matches[1] as $mention ) {
                 $text = ozh_ta_convert_mentions( $text, $mention, $mention );

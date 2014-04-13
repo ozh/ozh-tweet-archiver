@@ -390,3 +390,58 @@ class ozh_ta_query_count {
     }
 
 }
+
+/**
+ * Fetch a single tweet
+ *
+ * This function is not used in the plugin, it's here to be used when debugging or for custom use
+ *
+ * @param  string $id   Tweet ID ('454752497002115072' in 'https://twitter.com/ozh/statuses/454752497002115072')
+ * @return bool|object  false if not found, or tweet object (see https://dev.twitter.com/docs/platform-objects/tweets)
+ */
+function ozh_ta_get_single_tweet( $id ) {
+    global $ozh_ta;
+    
+    if( !ozh_ta_is_configured() ) {
+		ozh_ta_debug( 'Config incomplete, cannot import tweets' );
+        return false;
+    }
+
+    $api = 'https://api.twitter.com/1.1/statuses/show.json?id=' . $id;
+	$headers = array(
+		'Authorization' => 'Bearer ' . $ozh_ta['access_token'],
+	);
+
+    ozh_ta_debug( "Polling $api" );
+    
+	$response = wp_remote_get( $api, array(
+		'headers' => $headers,
+		'timeout' => 10
+	) );
+    
+	$tweet = json_decode( wp_remote_retrieve_body( $response ) );
+    
+    // var_dump( $tweet );
+    if( isset( $tweet->errors ) ) {
+        ozh_ta_debug( "Tweet #$id not found!" );
+        return false;
+    }
+    
+    return $tweet;
+}
+
+/**
+ * Import a single tweet as a post
+ *
+ * This function is not used in the plugin, it's here to be used when debugging or for custom use
+ *
+ * @param  string $id   Tweet ID ('454752497002115072' in 'https://twitter.com/ozh/statuses/454752497002115072')
+ * @return bool|array   false if not fuond, or array of stats about the insertion
+ */
+function ozh_ta_import_single_tweet( $id ) {
+    if( $tweet = ozh_ta_get_single_tweet( $id ) ) {
+        return( ozh_ta_insert_tweets( array( $tweet ) ) );
+    }
+    
+    return false;
+}
