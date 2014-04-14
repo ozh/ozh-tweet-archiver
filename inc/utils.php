@@ -243,7 +243,7 @@ function ozh_ta_convert_mentions( $text, $screen_name, $name ) {
         $replace = sprintf( '<span class="username username_linked">@<a href="https://twitter.com/%s" title="%s">%s</a></span>',
                             $screen_name, esc_attr( $name ), $screen_name );
     } else {
-        $replace = sprintf( '<span title="%s" class="username username_unlinked">@%s</a>',
+        $replace = sprintf( '<span title="%s" class="username username_unlinked">@%s</span>',
                             esc_attr( $name ), $screen_name );
     }
     
