@@ -129,7 +129,7 @@ function ozh_ta_setting( $setting ) {
 		
 	case 'post_format':
 		$options = get_post_format_strings();
-		$value = ( array_key_exists( $value, $options ? $value : 'standard' );
+		$value = ( array_key_exists( $value, $options ) ? $value : 'standard' );
 		echo "<select class='toggler' id='$setting' name='ozh_ta[$setting]'>\n";
 		foreach( $options as $option => $desc ){
 			echo "<option value='$option' ".selected( $option, $value, false ).">$desc</option>\n";
