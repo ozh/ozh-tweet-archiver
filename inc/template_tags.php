@@ -51,6 +51,15 @@ function ozh_ta_reply_to_tweet( $echo = true ) {
 }
 add_action( 'ozh_ta_reply_to_tweet', 'ozh_ta_reply_to_tweet', 10, 0 );
 
+// Template tag: is_reply or is_no_reply
+function ozh_ta_is_reply_or_not( $echo = true ) {
+    $what = ozh_ta_get_meta( 'reply_to_tweet' ) ? 'is_reply' : 'is_no_reply';
+	if( $echo )
+		echo $what;
+	return $what;
+}
+add_action( 'ozh_ta_is_reply_or_not', 'ozh_ta_is_reply_or_not', 10, 0 );
+
 // Template tag: "in reply to Ozh"
 function ozh_ta_in_reply_to_tweet( $text = 'in reply to %name%', $echo = true ) {
 	$tweet = ozh_ta_reply_to_tweet( false );
@@ -197,7 +206,7 @@ function ozh_ta_get_meta( $what = 'source' ) {
 	return get_post_meta( $id, 'ozh_ta_'.$what, true );
 }
 
-// Slight hacked monthly archives
+// Slightly hacked monthly archives
 function ozh_ta_get_month_archives($args = '') {
 	global $wpdb, $wp_locale;
 
@@ -236,7 +245,7 @@ function ozh_ta_get_month_archives($args = '') {
 		$archive_week_end_date_format = get_option('date_format');
 	}
 
-	//filters
+	// filters
 	$where = "WHERE post_type = 'post' AND post_status = 'publish'";
 
 	$output = '';

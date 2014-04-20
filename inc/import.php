@@ -429,9 +429,8 @@ function ozh_ta_get_single_tweet( $id ) {
     
 	$tweet = json_decode( wp_remote_retrieve_body( $response ) );
     
-    // var_dump( $tweet );
     if( isset( $tweet->errors ) ) {
-        ozh_ta_debug( "Tweet #$id not found!" );
+        ozh_ta_debug( "Error with tweet #$id : " . $tweet->errors[0]->message );
         return false;
     }
     
@@ -444,7 +443,7 @@ function ozh_ta_get_single_tweet( $id ) {
  * This function is not used in the plugin, it's here to be used when debugging or for custom use
  *
  * @param  string $id   Tweet ID ('454752497002115072' in 'https://twitter.com/ozh/statuses/454752497002115072')
- * @return bool|array   false if not fuond, or array of stats about the insertion
+ * @return bool|array   false if not found, or array of stats about the insertion
  */
 function ozh_ta_import_single_tweet( $id ) {
     if( $tweet = ozh_ta_get_single_tweet( $id ) ) {
