@@ -94,9 +94,10 @@ function ozh_ta_is_configured() {
  * Delay before next update
  *
  * @param  bool $human_time  true to get human readable interval in hours/min/sec, false to get a number of seconds
+ * @param  bool $long        if $human_time is true, displays "seconds/minutes/hours" if true, "s/m/h" if false
  * @return mixed             string or integer
  */
-function ozh_ta_next_update_in( $human_time = true ) {
+function ozh_ta_next_update_in( $human_time = true, $long = true ) {
 	global $ozh_ta;
 	
 	$next = wp_next_scheduled( 'ozh_ta_cron_import' );
@@ -106,7 +107,7 @@ function ozh_ta_next_update_in( $human_time = true ) {
 		$next = $now + $freq - 1;
 	
 	if( $human_time )
-		return ozh_ta_seconds_to_words( $next - $now );
+		return ozh_ta_seconds_to_words( $next - $now, $long );
 	else 
 		return ($next - $now );
 }
@@ -114,28 +115,33 @@ function ozh_ta_next_update_in( $human_time = true ) {
 /**
  * Transform 132456 seconds into x hours y minutes z seconds
  *
- * @param  interger $seconds  Interval in seconds to convert
+ * @param  integer $seconds  Interval in seconds to convert
+ * @param  bool    $long     displays "seconds/minutes/hours" if true, "s/m/h" if false
  * @return string             Human readable interval
  */
-function ozh_ta_seconds_to_words( $seconds ) {
+function ozh_ta_seconds_to_words( $seconds, $long = true ) {
     $ret = "";
+    
+    $str_hour = $long ? " hour"   : "h";
+    $str_min  = $long ? " minute" : "m";
+    $str_sec  = $long ? " second" : "s";
 
     $hours = intval( intval($seconds) / 3600 );
     if( $hours > 0 ) {
-        $ret .= "$hours hour";
-		$ret .= ( $hours > 1 ? 's ' : ' ' );
+        $ret .= $hours.$str_hour;
+		$ret .= ( $hours > 1 && $long ? 's ' : ' ' );
     }
 
     $minutes = intval( $seconds / 60 ) % 60;
     if( $minutes > 0 ) {
-        $ret .= "$minutes minute";
-		$ret .= ( $minutes > 1 ? 's ' : ' ' );
+        $ret .= $minutes.$str_min;
+		$ret .= ( $minutes > 1 && $long ? 's ' : ' ' );
     }
   
     $seconds = $seconds % 60;
     if( $seconds > 0 ) {
-		$ret .= "$seconds second";
-		$ret .= ( $seconds > 1 ? 's ' : ' ' );
+		$ret .= $seconds.$str_sec;
+		$ret .= ( $seconds > 1 && $long ? 's ' : ' ' );
 	}
 
     return trim( $ret );
