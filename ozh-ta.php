@@ -58,7 +58,7 @@ function ozh_ta_init() {
     if( $ozh_ta == false ) {
         $ozh_ta = ozh_ta_defaults();
     } else {
-        array_merge( ozh_ta_defaults(), $ozh_ta );
+        $ozh_ta = array_merge( ozh_ta_defaults(), $ozh_ta );
     }
 	
 	ozh_ta_debug( 'Plugin init' );
