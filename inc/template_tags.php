@@ -297,7 +297,6 @@ function ozh_ta_get_archives_link( $url, $text, $before = '', $after = '', $coun
 	$_url = str_replace( array( 'http://', 'https://', $_SERVER['SERVER_NAME'] ), '', $url );
 	$current = ( $_SERVER['REQUEST_URI'] == $_url ) ? 'current' : '';
 	
-	$bg = get_template_directory_uri().'/img/bg-nav.png';
 	$count =( 250 - $count );
 
 	$link_html = "\t<li class='$current count_$count' style='background-position: -{$count}px 0px'>$before<a href='$url' title='$title_text'>$text $after</a></li>\n";
