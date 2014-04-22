@@ -113,6 +113,7 @@ function ozh_ta_defaults() {
 		// plugin:
 		'refresh_interval'       => 60*60, // 60 minutes
 		'post_category'          => get_option('default_category'), // integer
+		'post_format'            => 'standard', // can be any of the values returned by get_post_format_slugs()
 		'post_author'            => $wpdb->get_var("SELECT ID FROM $wpdb->users ORDER BY ID LIMIT 1"), // first user id found
 		'link_hashtags'          => 'local', // can be no/local/twitter
 		'add_hash_as_tags'       => 'yes', // can be yes/no

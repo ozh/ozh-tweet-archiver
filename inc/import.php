@@ -293,6 +293,10 @@ function ozh_ta_insert_tweets( $tweets ) {
 				'post_author'   => $ozh_ta['post_author'],
                 'guid'          => home_url() . '/?tid=' . $tid,  // forcing a GUID will save one query when inserting
 			);
+			// Post format
+			if ( 'standard' != array( $ozh_ta['post_format'] ) ) {
+				$post['post_format'] = 'post-format-' . array( $ozh_ta['post_format'] );
+			}
 			// Plugins: hack here
 			$post = apply_filters( 'ozh_ta_insert_tweets_post', $post ); 
 			
