@@ -49,6 +49,7 @@ function ozh_ta_init_settings() {
 	$fields = array(
 		'refresh_interval' => 'Refresh interval',
 		'post_category'    => 'Post category',
+		'post_format'      => 'Post format',
 		'post_author'      => 'Post author',
 		'link_usernames'   => 'Link @usernames',
 		'link_hashtags'    => 'Link #hashtags',
@@ -124,6 +125,17 @@ function ozh_ta_setting( $setting ) {
 			)
 		);
 		echo "<br/>Posts will be filed into this category.";
+		break;
+		
+	case 'post_format':
+		$options = get_post_format_strings();
+		$value = ( array_key_exists( $value, $options ) ? $value : 'standard' );
+		echo "<select class='toggler' id='$setting' name='ozh_ta[$setting]'>\n";
+		foreach( $options as $option => $desc ){
+			echo "<option value='$option' ".selected( $option, $value, false ).">$desc</option>\n";
+		}
+		echo "</select>\n";
+		echo "<br/>Posts will be assigned this post format.";
 		break;
 		
 	case 'post_author':
@@ -263,6 +275,11 @@ function ozh_ta_setting_refresh_interval() {
 // Field: post_category
 function ozh_ta_setting_post_category() {
 	ozh_ta_setting( 'post_category' );
+}
+
+// Field: post_format
+function ozh_ta_setting_post_format() {
+	ozh_ta_setting( 'post_format' );
 }
 
 // Field: post_author
