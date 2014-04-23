@@ -91,7 +91,6 @@ function ozh_ta_do_page_manual() {
 function ozh_ta_do_page() {
 	global $ozh_ta;
 	
-	ozh_ta_debug( 'Starting page' );
     ?>
     <div class="wrap">
     <?php screen_icon(); ?>

@@ -14,7 +14,7 @@ function ozh_ta_get_tweets( $echo = false ) {
 		ozh_ta_debug( 'Config incomplete, cannot import tweets' );
         return false;
     }
-
+    
 	$api = add_query_arg( array(
 		'count'       => OZH_TA_BATCH,
 		'page'        => $ozh_ta['api_page'],
@@ -90,7 +90,6 @@ function ozh_ta_get_tweets( $echo = false ) {
     // This isn't needed anymore since, smartly, Twitter's API returns both an id and an id_str. Nice, Twitter :)
 
 	$tweets = array_reverse( (array)json_decode( $tweets ) );
-    $ozh_ta['_last_tweet_id_inserted'] = 0;
     
 	// Tweets found, let's archive
 	if ( $tweets ) {
@@ -100,10 +99,9 @@ function ozh_ta_get_tweets( $echo = false ) {
         }
 
         $results = ozh_ta_insert_tweets( $tweets, true );
-		// array( inserted, skipped, tagged, num_tags, last_tweet_id_inserted, (array)$user );
+		// array( inserted, skipped, tagged, num_tags, (array)$user );
         
-		// Record highest temp last_tweet_id_inserted, increment api_page and update user info
-		$ozh_ta['_last_tweet_id_inserted'] = max( $results['last_tweet_id_inserted'], $ozh_ta['_last_tweet_id_inserted'] );
+		// Increment api_page and update user info
 		$ozh_ta['twitter_stats'] = array_merge( $ozh_ta['twitter_stats'], $results['user'] );
 		$ozh_ta['api_page']++;
 		update_option( 'ozh_ta', $ozh_ta );
@@ -133,13 +131,12 @@ function ozh_ta_get_tweets( $echo = false ) {
 		// Schedule next operation
 		ozh_ta_schedule_next( $ozh_ta['refresh_interval'] );
 		ozh_ta_debug( "Twitter finished, next in {$ozh_ta['refresh_interval']}" );
-		
-		// Update real last_tweet_id_inserted, stats, & reset API paging
-		$ozh_ta['last_tweet_id_inserted'] = max( $ozh_ta['last_tweet_id_inserted'], $ozh_ta['_last_tweet_id_inserted'] );
-		unset( $ozh_ta['_last_tweet_id_inserted'] );
+        
+		// Update last_tweet_id_inserted, stats, & reset API paging
 		$ozh_ta['api_page'] = 1;
-		$ozh_ta['twitter_stats']['link_count'] = $wpdb->get_var( "SELECT COUNT(ID) FROM `$wpdb->posts` WHERE `post_type` = 'post' AND `post_status` = 'publish' AND `post_content` LIKE '%class=\"link%'" );
-		$ozh_ta['twitter_stats']['replies'] = $wpdb->get_row( "SELECT COUNT( DISTINCT `meta_value`) as unique_names, COUNT( `meta_value`) as total FROM `$wpdb->postmeta` WHERE `meta_key` = 'ozh_ta_reply_to_name'", ARRAY_A );
+		$ozh_ta['last_tweet_id_inserted']          = $wpdb->get_var( "SELECT `meta_value` FROM `$wpdb->postmeta` WHERE `meta_key` = 'ozh_ta_id' ORDER BY ABS(`meta_value`) DESC LIMIT 1" ); // order by ABS() because they are strings in the DB
+		$ozh_ta['twitter_stats']['link_count']     = $wpdb->get_var( "SELECT COUNT(ID) FROM `$wpdb->posts` WHERE `post_type` = 'post' AND `post_status` = 'publish' AND `post_content` LIKE '%class=\"link%'" );
+		$ozh_ta['twitter_stats']['replies']        = $wpdb->get_row( "SELECT COUNT( DISTINCT `meta_value`) as unique_names, COUNT( `meta_value`) as total FROM `$wpdb->postmeta` WHERE `meta_key` = 'ozh_ta_reply_to_name'", ARRAY_A );
 		$ozh_ta['twitter_stats']['total_archived'] = $wpdb->get_var( "SELECT COUNT(`meta_key`) FROM `$wpdb->postmeta` WHERE `meta_key` = 'ozh_ta_id'" );
 		update_option( 'ozh_ta', $ozh_ta );
 		
@@ -294,8 +291,8 @@ function ozh_ta_insert_tweets( $tweets ) {
                 'guid'          => home_url() . '/?tid=' . $tid,  // forcing a GUID will save one query when inserting
 			);
 			// Post format
-			if ( 'standard' != array( $ozh_ta['post_format'] ) ) {
-				$post['post_format'] = 'post-format-' . array( $ozh_ta['post_format'] );
+			if ( 'standard' != $ozh_ta['post_format'] ) {
+				$post['post_format'] = 'post-format-' . $ozh_ta['post_format'];
 			}
 			// Plugins: hack here
 			$post = apply_filters( 'ozh_ta_insert_tweets_post', $post ); 
@@ -334,7 +331,6 @@ function ozh_ta_insert_tweets( $tweets ) {
                 
             }
             
-            $last_tweet_id_inserted = $tid;
 			$inserted++;
 			
 		} else {
@@ -353,7 +349,6 @@ function ozh_ta_insert_tweets( $tweets ) {
         'skipped'                => $skipped,
         'tagged'                 => $tagged,
         'num_tags'               => $num_tags,
-		'last_tweet_id_inserted' => $tid,
 		'user'                   => $user,
 	);
 }
