@@ -103,7 +103,7 @@ function ozh_ta_next_update_in( $human_time = true, $long = true ) {
 	$next = wp_next_scheduled( 'ozh_ta_cron_import' );
 	$freq = $ozh_ta['refresh_interval'];
 	$now = time();
-	if( $next < $now )
+	if( $next < $now && $next )
 		$next = $now + $freq - 1;
 	
 	if( $human_time )
