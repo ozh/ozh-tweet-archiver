@@ -60,6 +60,15 @@ function ozh_ta_is_reply_or_not( $echo = true ) {
 }
 add_action( 'ozh_ta_is_reply_or_not', 'ozh_ta_is_reply_or_not', 10, 0 );
 
+// Template tag: is_retweet or is_no_retweet
+function ozh_ta_is_retweet_or_not( $echo = true ) {
+    $what = (bool)preg_match( '/\bRT\s*:?\s*\@/', get_the_title() ) ? 'is_retweet' : 'is_no_retweet';
+	if( $echo )
+		echo $what;
+	return $what;
+}
+add_action( 'ozh_ta_is_retweet_or_not', 'ozh_ta_is_retweet_or_not', 10, 0 );
+
 // Template tag: "in reply to Ozh"
 function ozh_ta_in_reply_to_tweet( $text = 'in reply to %name%', $echo = true ) {
 	$tweet = ozh_ta_reply_to_tweet( false );
