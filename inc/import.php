@@ -292,8 +292,9 @@ function ozh_ta_insert_tweets( $tweets ) {
 			);
 			// Post format
 			if ( 'standard' != $ozh_ta['post_format'] ) {
-				$post['post_format'] = 'post-format-' . $ozh_ta['post_format'];
+				$post['tax_input'] = array( 'post_format' => array( 'post-format-' . $ozh_ta['post_format'] ) );
 			}
+
 			// Plugins: hack here
 			$post = apply_filters( 'ozh_ta_insert_tweets_post', $post ); 
 			
