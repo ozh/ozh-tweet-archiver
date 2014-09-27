@@ -24,6 +24,8 @@ Author URI: http://ozh.org/
  *         tweaks here and there
  *
  * 2.0.2   post formats -- fixed -- thanks to @hatsumatsu
+ *         time offset, thanks to @GoldDave
+ *         new template tag: ozh_ta_is_retweet_or_not()
  */
 
 /*
