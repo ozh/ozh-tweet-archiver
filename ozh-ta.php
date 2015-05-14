@@ -3,7 +3,7 @@
 Plugin Name: Ozh' Tweet Archiver
 Plugin URI: http://planetozh.com/blog/my-projects/ozh-tweet-archiver-backup-twitter-with-wordpress/
 Description: Archive your tweets and import them as posts
-Version: 2.0.2
+Version: 2.0.3
 Author: Ozh
 Author URI: http://ozh.org/
 */
@@ -26,6 +26,9 @@ Author URI: http://ozh.org/
  * 2.0.2   post formats -- fixed -- thanks to @hatsumatsu
  *         time offset, thanks to @GoldDave
  *         new template tag: ozh_ta_is_retweet_or_not()
+ *
+ * 2.0.3   fix hashtags with umlauts (and probably other funky chars) -- thanks to pep
+ *
  */
 
 /*
