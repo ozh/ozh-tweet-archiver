@@ -283,12 +283,8 @@ function ozh_ta_trim_long_string( $text, $len = 30 ) {
 function ozh_ta_get_tag_link( $tag ) {
 	global $wp_rewrite;
 	$link = $wp_rewrite->get_tag_permastruct();
-    
-	error_log("Original tag $tag");
-	
+    	
 	$tag = sanitize_title_with_dashes( remove_accents( $tag ) );
-error_log("sanitized tag $tag");
-	
 	
 	if( empty( $link ) ) {
 		// site.com/?tag=bleh
