@@ -283,9 +283,9 @@ function ozh_ta_trim_long_string( $text, $len = 30 ) {
 function ozh_ta_get_tag_link( $tag ) {
 	global $wp_rewrite;
 	$link = $wp_rewrite->get_tag_permastruct();
-    
-	$tag = sanitize_title_with_dashes( $tag );
-
+    	
+	$tag = sanitize_title_with_dashes( remove_accents( $tag ) );
+	
 	if( empty( $link ) ) {
 		// site.com/?tag=bleh
 		$link = trailingslashit( home_url() ) . '?tag=' . $tag;
