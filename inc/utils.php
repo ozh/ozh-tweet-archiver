@@ -207,12 +207,21 @@ function ozh_ta_convert_hashtags( $text, $hashtag ) {
 function ozh_ta_convert_links( $text, $expanded_url, $display_url, $tco_url ) {
     global $ozh_ta;
     
-    if( $ozh_ta['un_tco'] == 'yes' ) {
-        $replace = sprintf( '<a href="%s" title="%s" class="link link_untco">%s</a>',
-                            $expanded_url, $expanded_url, $display_url );
+    // If the expanded URL is on twitter.com, return the tweet with a leading newline for autoembedding
+    if( parse_url( $expanded_url, PHP_URL_HOST ) == 'twitter.com' ) {
+        $replace = "\n\n" . $expanded_url . "\n";
+    
+    // Other URLs
     } else {
-        $replace = sprintf( '<a href="%s" class="link link_tco">%s</a>',
-                            $tco_url, $tco_url );
+    
+        if( $ozh_ta['un_tco'] == 'yes' ) {
+            $replace = sprintf( '<a href="%s" title="%s" class="link link_untco">%s</a>',
+                                $expanded_url, $expanded_url, $display_url );
+        } else {
+            $replace = sprintf( '<a href="%s" class="link link_tco">%s</a>',
+                                $tco_url, $tco_url );
+        }
+        
     }
     
     $text = preg_replace( '!' . $tco_url . '!', $replace, $text, 1 ); // using ! instead of / because URLs contain / already ;P
