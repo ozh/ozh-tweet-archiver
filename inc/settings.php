@@ -56,6 +56,7 @@ function ozh_ta_init_settings() {
 		'add_hash_as_tags' => 'Add hashtags as post tags',
 		'un_tco'           => 'Expand <code>t.co</code> links',
 		'embed_images'     => 'Embed <code>pic.twitter.com</code> images',
+        'filter_keywords'  => 'Filter tweets by keyword',
 	);
 	foreach( $fields as $field => $text ) {
 		add_settings_field(
@@ -90,9 +91,6 @@ function ozh_ta_setting( $setting ) {
 	case 'screen_name':
 	case 'cons_key':
 	case 'cons_secret':
-		$value = esc_attr( $value );
-		echo "<input id='$setting' name='ozh_ta[$setting]' type='text' value='$value' />";
-		break;
 		$value = esc_attr( $value );
 		echo "<input id='$setting' name='ozh_ta[$setting]' type='text' value='$value' />";
 		break;
@@ -249,6 +247,13 @@ function ozh_ta_setting( $setting ) {
 		echo "</select>\n";
 		echo "<br/>If selected, tags in WordPress will be created with each #hashtags.";
 		break;
+
+    case 'filter_keywords':
+		$value = esc_attr( $value );
+		echo "<input id='$setting' name='ozh_ta[$setting]' type='text' value='$value' />";
+        echo "<br/>A comma delimited list of keywords used to filter tweets.";
+		break;
+
 	}
 }
 
@@ -310,6 +315,11 @@ function ozh_ta_setting_embed_images() {
 // Field: add_hash_as_tags
 function ozh_ta_setting_add_hash_as_tags() {
 	ozh_ta_setting( 'add_hash_as_tags' );
+}
+
+// Field: filter_keywords
+function ozh_ta_setting_filter_keywords() {
+    ozh_ta_setting( 'filter_keywords' );
 }
 
 // Display and fill the form field
