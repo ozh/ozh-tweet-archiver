@@ -193,7 +193,7 @@ function ozh_ta_linkify_tweet( $tweet ) {
     }
     
 	// embed images if applicable. This operation shall be the last one
-    if( isset( $tweet->entities->media ) && $medias = $tweet->entities->media ) {
+    if( isset( $tweet->extended_entities->media) && $medias = $tweet->extended_entities->media ) {
         foreach( $medias as $media ) {
             $media_url    = $media->media_url_https;
             $display_url  = $media->display_url;
