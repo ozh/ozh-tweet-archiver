@@ -299,7 +299,12 @@ function ozh_ta_insert_tweets( $tweets ) {
 			$post = apply_filters( 'ozh_ta_insert_tweets_post', $post ); 
 			
 			$post_id = wp_insert_post( $post );
-
+			
+			// Apply post format when line 294-296 failed process the request
+			if ( 'standard' != $ozh_ta['post_format'] ) {
+  				set_post_format($post_id, $ozh_ta['post_format']);
+			}
+			
 			// Insert post meta data
 			add_post_meta( $post_id, 'ozh_ta_id', $tid );
 			if( $source )
