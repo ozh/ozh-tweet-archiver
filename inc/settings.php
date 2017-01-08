@@ -56,6 +56,7 @@ function ozh_ta_init_settings() {
 		'add_hash_as_tags' => 'Add hashtags as post tags',
 		'un_tco'           => 'Expand <code>t.co</code> links',
 		'embed_images'     => 'Embed <code>pic.twitter.com</code> images',
+		'download_images'  => 'Download images into Wordpress',
 	);
 	foreach( $fields as $field => $text ) {
 		add_settings_field(
@@ -207,6 +208,26 @@ function ozh_ta_setting( $setting ) {
 		
 		break;
 		
+	 case 'download_images':
+                $options = array(
+                        'no'  => 'No',
+                        'yes' => 'Yes',
+                );
+        $value = ( $value == 'yes' ? 'yes' : 'no' );
+                echo "<select class='toggler' id='$setting' name='ozh_ta[$setting]'>\n";
+                foreach( $options as $option => $desc ){
+                        echo "<option value='$option' ".selected( $option, $value, false ).">$desc</option>\n";
+                }
+                echo "</select>\n";
+
+                echo "<br/><span id='helper_download_images' class='tweet_sample fade-303060 fade'>
+                <span id='toggle_download_images_no' class='toggle_download_images' style='display:". ($value == 'no' ? 'inline' : 'none') ."'>Embed images from Twitter services</span>
+                <span id='toggle_download_images_yes' class='toggle_download_images' style='display:". ($value == 'yes' ? 'inline' : 'none') ."'>Download images from Twitter</span>
+                </span>";
+
+                break;
+
+
 	case 'link_hashtags':
 		$options = array(
 			'no' => 'No',
@@ -305,6 +326,11 @@ function ozh_ta_setting_un_tco() {
 // Field: un_tco
 function ozh_ta_setting_embed_images() {
 	ozh_ta_setting( 'embed_images' );
+}
+
+// Field: download_images
+function ozh_ta_setting_download_images() {
+        ozh_ta_setting( 'download_images' );
 }
 
 // Field: add_hash_as_tags

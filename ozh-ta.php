@@ -131,6 +131,7 @@ function ozh_ta_defaults() {
 		'add_hash_as_tags'       => 'yes', // can be yes/no
 		'link_usernames'         => 'yes', // can be yes/no
 		'embed_images'           => 'yes', // can be yes/no
+		'download_images'        => 'yes', // can be yes/no
 		'un_tco'                 => 'yes', // can be yes/no
 		'last_tweet_id_inserted' => 1, // ID of last inserted tweet
 		'api_page'               => 1, // current page being polled on the API

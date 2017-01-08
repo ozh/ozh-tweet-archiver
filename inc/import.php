@@ -199,6 +199,41 @@ function ozh_ta_linkify_tweet( $tweet ) {
             $display_url  = $media->display_url;
             $expanded_url = $media->expanded_url;
             $tco_url      = $media->url;
+
+	    if( $ozh_ta['download_images'] == 'yes' ) {
+                $url = $media_url;
+    		$tmp = download_url( $url );
+    		
+		if( is_wp_error( $tmp ) ){
+           	    // download failed, handle error
+    		}
+
+	        $file_array = array();
+
+    	        // Set variables for storage
+    	        // fix file filename for query strings
+    	        preg_match('/[^\?]+\.(jpg|jpe|jpeg|gif|png)/i', $url, $matches);
+                $file_array['name'] = basename($matches[0]);
+                $file_array['tmp_name'] = $tmp;
+
+                // If error storing temporarily, unlink
+                if ( is_wp_error( $tmp ) ) {
+                    @unlink($file_array['tmp_name']);
+                    $file_array['tmp_name'] = '';
+                }
+
+                // do the validation and storage stuff
+                $id = media_handle_sideload( $file_array, 0 );
+
+                // If error storing permanently, unlink
+                if ( is_wp_error($id) ) {
+                    @unlink($file_array['tmp_name']);
+                }
+                else {
+                    $media_url = wp_get_attachment_url( $id );
+                }
+         }
+
             
             // Convert links
             if( $ozh_ta['un_tco'] == 'yes' ) {
