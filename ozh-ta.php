@@ -134,6 +134,7 @@ function ozh_ta_defaults() {
 		'un_tco'                 => 'yes', // can be yes/no
 		'last_tweet_id_inserted' => 1, // ID of last inserted tweet
 		'api_page'               => 1, // current page being polled on the API
+        'filter_keywords'        => '', // By default don't filter tweets.
 		
 		// twitter user:
 		'screen_name'   => '',

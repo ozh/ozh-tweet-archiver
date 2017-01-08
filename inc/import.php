@@ -245,9 +245,32 @@ function ozh_ta_insert_tweets( $tweets ) {
     if( ozh_ta_is_debug() ) {
         $num_sql_batch = new ozh_ta_query_count(); 
     }
-		
+
+    // Build list of keywords if required.
+    $keywords = $ozh_ta['filter_keywords'];
+    if ( !empty( $keywords ) ) {
+        $keywords = explode( ',', $keywords );
+    } else {
+        $keywords = false;
+    }
+
 	foreach ( (array)$tweets as $tweet ) {
-		
+
+        // Filter this tweet out?
+        if ( $keywords !== false ) {
+            $found = false;
+            foreach ( $keywords as $keyword ) {
+                if ( strpos( $tweet->text, $keyword ) !== false ) {
+                    $found = true;
+                    break;
+                }
+            }
+
+            if ( !$found ) {
+                continue;
+            }
+        }
+
         if( ozh_ta_is_debug() ) {
             $num_sql_post = new ozh_ta_query_count(); 
         }
