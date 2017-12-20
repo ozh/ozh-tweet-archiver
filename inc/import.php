@@ -19,7 +19,8 @@ function ozh_ta_get_tweets( $echo = false ) {
 		'count'       => OZH_TA_BATCH,
 		'page'        => $ozh_ta['api_page'],
 		'screen_name' => urlencode( $ozh_ta['screen_name'] ),
-		'since_id'    => $ozh_ta['last_tweet_id_inserted']
+		'since_id'    => $ozh_ta['last_tweet_id_inserted'],
+		'tweet_mode'  => 'extended'
 	), OZH_TA_API );
 	ozh_ta_debug( "Polling $api" );
 	
@@ -160,7 +161,7 @@ function ozh_ta_get_tweets( $echo = false ) {
 function ozh_ta_linkify_tweet( $tweet ) {
     global $ozh_ta;
     
-    $text = $tweet->text;
+    $text = $tweet->full_text;
     
 	// Linkify twitter names if applicable
     if( isset( $tweet->entities->user_mentions ) && $mentions = $tweet->entities->user_mentions ) {
